@@ -1,6 +1,6 @@
 # 00 · Clarifying questions
 
-Sent to the interviewer before any code was written. Each question is one whose answer changes the design, and each carries the assumption I would build on without an answer, so work never blocks on a reply.
+Sent to the interviewer before any code was written. Each question is one whose answer changes the design, and each carries the assumption I would build on without an answer, so work never blocks on a reply. The answers are at the end.
 
 | # | Question | Why it changes the design | Working assumption |
 |---|---|---|---|
@@ -15,3 +15,23 @@ Sent to the interviewer before any code was written. Each question is one whose 
 | 9 | **Workforce types.** Part-time staff, contractors, hourly workers? | A 0.5 FTE salary compared with a full-time one is misleading. | Full- and part-time with an FTE; amounts annual; comparisons FTE-normalized; contractors excluded. |
 | 10 | **Sensitive data.** Is storing gender for pay-equity analysis acceptable? Any GDPR, data-residency or retention rules — can records be deleted, or only terminated? | Legal constraints; whether hard deletes exist. | Gender optional (incl. "undisclosed"); employees are terminated, never hard-deleted; groups under 5 people are flagged as low-sample; the adjusted pay gap uses only cells with at least 5 women and 5 men. |
 | 11 | **Scale and logistics.** Expected growth beyond 10k, number of concurrent users, hosting preference, and the expected time-box? | Sizing; how far to take hardening. | ≤ 50 concurrent users with headroom to ~100k employees; Docker + managed Postgres. |
+
+## Answers
+
+The interviewer replied before any code was written. Each answer, and what it changed:
+
+| # | Answer | Decision |
+|---|---|---|
+| 1 | A single HR Manager persona; no authentication or role-based access | One persona, no sign-in. The public demo is open, so its data is reset every night |
+| 2 | Annual gross base salary for full-time employees | One salary per employee: an amount and its currency |
+| 3 | Current salary is enough; effective-dated history is optional | Current salary only, edited in place. History is left out |
+| 4 | Keep original currencies, or one reporting currency at fixed rates; no live rates | Salaries stay in their own currency; insights convert to a reporting currency (USD by default) at fixed budget rates kept as reference data |
+| 5 | Focused dashboards and breakdowns by country, department or job title; pay equity and natural language optional | A dashboard of those breakdowns plus a group-by explorer, and each employee against peers with the same job title. No pay-gap or natural-language features |
+| 6 | Job levels and pay bands not required | No levels or bands; seniority shows in the job title |
+| 7 | CSV/Excel import and export optional | Left out |
+| 8 | Changes can be made directly; approvals and audit history not required | Direct edits, no approvals and no audit log. Concurrent edits are still detected |
+| 9 | Full-time employees only; no contractors or FTE | No employment types or FTE |
+| 10 | No gender analysis or compliance requirements prescribed | No gender field. Employees can be deleted |
+| 11 | 10,000 employees; no concurrency target or hosting preference; a live public URL is expected | Sized for 10,000; deployed to one VM with a public HTTPS address |
+
+[`01-requirements.md`](01-requirements.md) is written from these answers.
