@@ -6,6 +6,8 @@ from rest_framework import viewsets
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.analytics.selectors import peer_position
+from apps.analytics.serializers import PeerPositionSerializer
 from apps.core.concurrency import IF_MATCH, etag, expected_version
 from apps.core.pagination import page_of, paged_response
 from apps.employees import selectors, services
@@ -63,6 +65,13 @@ class EmployeeViewSet(viewsets.ViewSet):
     def destroy(self, request: Request, pk: int) -> Response:
         services.delete_employee(pk, expected_version(request))
         return Response(status=204)
+
+    @extend_schema(responses=PeerPositionSerializer)
+    def peers(self, request: Request, pk: int) -> Response:
+        """Where the employee's salary sits among people with the same job title."""
+        rows = selectors.employees().select_related("country__default_currency")
+        employee = get_object_or_404(rows, pk=pk)
+        return Response(PeerPositionSerializer(peer_position(employee)).data)
 
     def _record(self, employee: Employee, status: int = 200) -> Response:
         """The whole record, with its version as the ETag for the next If-Match."""

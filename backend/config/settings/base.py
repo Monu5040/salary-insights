@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.reference",
     "apps.employees",
+    "apps.analytics",
 ]
 
 MIDDLEWARE = [

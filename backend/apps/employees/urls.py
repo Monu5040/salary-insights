@@ -11,4 +11,5 @@ urlpatterns = [
         ),
         name="employee-detail",
     ),
+    path("<int:pk>/peers/", EmployeeViewSet.as_view({"get": "peers"}), name="employee-peers"),
 ]
