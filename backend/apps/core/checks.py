@@ -13,7 +13,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.core.checks import CheckMessage, Error, register
 
-POSITIVE_LIMITS = ("MIN_GROUP_SIZE", "GROQ_TIMEOUT_SECONDS", "IMPORT_MAX_MB", "IMPORT_MAX_ROWS")
+POSITIVE_LIMITS = ("MIN_GROUP_SIZE", "IMPORT_MAX_MB", "IMPORT_MAX_ROWS")
 
 
 @register()

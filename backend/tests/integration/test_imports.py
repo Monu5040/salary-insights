@@ -1,5 +1,5 @@
 """Import a sheet in two steps, and export the directory (design §6; edge cases #46 to #50,
-#55, #56)."""
+#52, #53)."""
 
 import csv
 import io

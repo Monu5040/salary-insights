@@ -126,9 +126,6 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "UNAUTHENTICATED_USER": None,
-    "DEFAULT_THROTTLE_RATES": {"questions": env_str("QUESTION_RATE", "10/min")},
-    # Behind a proxy (the tunnel), the client is the last X-Forwarded-For entry it added.
-    "NUM_PROXIES": env_int("NUM_PROXIES", 0) or None,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "apps.core.errors.exception_handler",
@@ -154,8 +151,3 @@ ORG_TIME_ZONE = env_str("ORG_TIME_ZONE", "UTC")
 # Import limits (design §6): a file is imported whole or not at all.
 IMPORT_MAX_MB = env_int("IMPORT_MAX_MB", 10)
 IMPORT_MAX_ROWS = env_int("IMPORT_MAX_ROWS", 50_000)
-# Natural-language questions (design §4): Groq turns a question into explorer parameters.
-# Without a key the question box says so and the rest of the app works as before.
-GROQ_API_KEY = env_str("GROQ_API_KEY", "")
-GROQ_MODEL = env_str("GROQ_MODEL", "llama-3.3-70b-versatile")
-GROQ_TIMEOUT_SECONDS = env_int("GROQ_TIMEOUT_SECONDS", 15)

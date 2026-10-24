@@ -34,7 +34,7 @@ export function Explorer({ scope }: { scope: string }) {
   }));
 
   return (
-    <Card id="explorer" title={<CardTitle>Explore</CardTitle>}>
+    <Card title={<CardTitle>Explore</CardTitle>}>
       <Flex gap={8} wrap style={{ marginBottom: 16 }}>
         <Select
           mode="multiple"
@@ -84,7 +84,7 @@ type TableProps = {
 };
 
 /** An explorer answer as a table: a row per group, a column per measure. */
-export function GroupsTable({ groups, currency, metrics, by, loading = false }: TableProps) {
+function GroupsTable({ groups, currency, metrics, by, loading = false }: TableProps) {
   const { money } = useCurrency(currency);
   return (
     <Table<Group>

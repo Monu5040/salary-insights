@@ -42,8 +42,7 @@ flowchart LR
 | D7 | Offset pagination with a stable tie-breaker | Keyset pagination | HR expects page numbers and totals; `OFFSET` over 10k rows costs nothing. | ~1M rows. |
 | D8 | Analytics in SQL: parameterized CTEs with allow-listed pieces | Loading rows into pandas | Data stays in the database; one round trip per answer. | OLAP scale: rollups. |
 | D9 | No sign-in; the demo resets nightly | Sessions and roles | The brief asks for one persona and no authentication. Anyone can reach the demo, so a timer reseeds it every night. | Real data: sign-in first (§9). |
-| D11 | Questions in plain English through **Groq**, which only fills in explorer parameters | Text-to-SQL; a hand-written parser | The model picks from allow-lists and its reply is validated like a URL, so it can't reach the database; free phrasing without writing a grammar. | A model hosted in-house, if questions mustn't leave. |
-| D12 | Import in **two stateless requests**: preview, then apply the same file with the preview's fingerprint | A stored upload and a background worker | A 10,000-row file is planned in about a second, so nothing needs storing or queueing between the steps. | Files that take longer than a request. |
+| D11 | Import in **two stateless requests**: preview, then apply the same file with the preview's fingerprint | A stored upload and a background worker | A 10,000-row file is planned in about a second, so nothing needs storing or queueing between the steps. | Files that take longer than a request. |
 | D10 | Deploy with a shell script and systemd on one VM | Containers; a platform | No hosting preference; one VM is enough, and plain scripts are easy to read. | More than one machine. |
 
 ### Configuration
@@ -60,7 +59,6 @@ Assumptions are not hard-coded, so a different answer changes configuration, not
 | Smallest group treated as reliable (peers, `low_sample`, pay equity) | setting `MIN_GROUP_SIZE` | 5 |
 | Pay-equity band (compa-ratio inside it is fine) | setting `PAY_EQUITY_BAND` | `0.80,1.20` |
 | Import limits | settings `IMPORT_MAX_MB`, `IMPORT_MAX_ROWS` | 10 MB, 50,000 rows |
-| Questions in plain English | settings `GROQ_API_KEY` (none: the box says so), `GROQ_MODEL`, `QUESTION_RATE` | no key, `llama-3.3-70b-versatile`, 10 a minute |
 | Organization time zone (today, tenure) | setting `ORG_TIME_ZONE` | `UTC` |
 
 A bad value stops `manage.py check`, `migrate` and the server with a clear message (`apps/core/checks.py`).
@@ -161,8 +159,6 @@ Every answer states its `as_of` date (default today), its `currency` and its FX 
 
 **Explorer.** One allow-listed endpoint answers ad-hoc questions: up to five *metrics* (headcount, payroll, mean, median, P10, P25, P75, P90, min, max) × up to two *dimensions* (country, department, job title, tenure) × *filters* × `as_of` × `currency`. The dashboard's cards are saved presets of it, so changing a question means editing a list.
 
-**Questions in plain English.** `POST /analytics/ask/` sends the question to Groq's OpenAI-compatible API in JSON mode, at temperature 0, with instructions listing the metrics, dimensions, country codes, department ids and currencies it may choose from. Its reply is read as explorer parameters and validated by the explorer's own query serializer, then answered by the explorer, so a question can never become SQL. The answer shows what the question was read as and links to the explorer with the same parameters. Only the question and the reference lists leave the server; no salaries or names. Without a key the box answers 503 and says so; questions are throttled per address on the open demo.
-
 ## 5. Concurrent edits
 
 Every employee goes out with its `version` as an `ETag`. A write (edit, salary change, delete) sends it back in `If-Match`; the service locks the employee row (`select_for_update`), compares, applies the change and bumps the version, all in one transaction. A stale version gets 412 with the current one, and the app offers Reload, which shows the other person's record in place of what was typed. A write without `If-Match` gets 428. A double-clicked Save on a new employee is a 409 pointing at the record the first click made, because the code and email are unique.
@@ -183,7 +179,7 @@ DRF under `/api/v1/`. JSON; money as strings; ISO-8601 dates; errors as RFC 9457
 |---|---|
 | Employees | `GET, POST /employees/` (a new employee comes with their starting salary) · `GET, PATCH, DELETE /employees/{id}/` (writes need `If-Match`) · `GET /employees/{id}/peers/` |
 | Salaries | `GET, POST /employees/{id}/salaries/` · `PATCH, DELETE /employees/{id}/salaries/{sid}/`; every write sends the employee's `If-Match` version and answers with the whole history and the new version |
-| Insights | `GET /analytics/summary/` · `explore/` · `pay-equity/` (each takes `as_of`, `currency`, `country`, `department`) · `POST /analytics/ask/` · `GET /analytics/presets/` |
+| Insights | `GET /analytics/summary/` · `explore/` · `pay-equity/` (each takes `as_of`, `currency`, `country`, `department`) · `GET /analytics/presets/` |
 | Import and export | `POST /imports/preview/` · `POST /imports/apply/` (multipart) · `GET /exports/employees.csv` (the directory's filters) |
 | Reference | `GET /reference/countries/`, `departments/`, `currencies/` (with fixed rates) |
 | Settings | `GET /config/`: the reporting currency and today in the organization's time zone |
@@ -193,7 +189,7 @@ DRF under `/api/v1/`. JSON; money as strings; ISO-8601 dates; errors as RFC 9457
 
 | Screen | Purpose |
 |---|---|
-| Insights | A question box; headcount, payroll, median and mean; payroll and ranges by country and department; salary by job title; pay equity; the explorer. Date, currency, country and department in a scope bar |
+| Insights | Headcount, payroll, median and mean; payroll and ranges by country and department; salary by job title; pay equity; the explorer. Date, currency, country and department in a scope bar |
 | Employees | Server-side search, filters, sort and paging, with each salary in its own currency; Export CSV of the current view |
 | Employee | Details, current salary and its history with raise %, Record a change, Correct and Remove; peers; Edit and Delete |
 | Add employee | Details and starting salary; the currency defaults to the country's |
@@ -212,7 +208,6 @@ DRF under `/api/v1/`. JSON; money as strings; ISO-8601 dates; errors as RFC 9457
 - **Input**: explicit serializer fields, with `id`, `version` and timestamps read-only; allow-listed sorts and filters; ORM or parameterized SQL only.
 - **Headers**: `manage.py check --deploy` gates CI and every deploy: `DEBUG=False`, HSTS, SSL redirect behind the tunnel (`SECURE_PROXY_SSL_HEADER`), `X-Frame-Options: DENY`, `nosniff`. A Content Security Policy from django-csp: only this site's scripts, never inline ones (the API docs load Swagger UI from our own static files); inline styles allowed for Ant Design; no framing, plugins or `<base>`.
 - **Caching**: every API response is `Cache-Control: private, no-cache`, so no shared cache keeps pay data.
-- **Questions** send only their own text and the reference lists to Groq (§4), never salaries or names; the key lives in `.env` on the VM; each address may ask 10 a minute.
 - **Uploads** are read in memory, size- and row-limited, and never stored.
 - **Logs**: gunicorn's access log; salaries, names, emails and request bodies are never logged.
 
@@ -229,7 +224,7 @@ flowchart LR
   end
 ```
 
-- **One-time setup** (`deploy/setup-vm.sh`, as root): installs PostgreSQL, uv and cloudflared; creates the database, the secrets in `/opt/acme-salary/.env` (readable by the `deploy` user only, and where `GROQ_API_KEY` goes), the `deploy` user (SSH key only; may restart the app and nothing else), the app's systemd unit, the nightly reset timer, and the tunnel.
+- **One-time setup** (`deploy/setup-vm.sh`, as root): installs PostgreSQL, uv and cloudflared; creates the database, the secrets in `/opt/acme-salary/.env` (readable by the `deploy` user only), the `deploy` user (SSH key only; may restart the app and nothing else), the app's systemd unit, the nightly reset timer, and the tunnel.
 - **Public address.** The VM's provider forwards SSH but drops some inbound web traffic, so certificate authorities couldn't validate it. A Cloudflare quick tunnel dials out from the VM instead, giving an HTTPS address on `trycloudflare.com` with no open ports. Its address changes only if the tunnel restarts, and `deploy.sh` prints the current one. A named tunnel on a real domain would make it permanent.
 - **Every deploy** (`deploy/deploy.sh`, run by CI on each green push to `main`, or by hand) builds the React app, uploads a new release directory, installs the locked dependencies with uv, runs `check --deploy`, `collectstatic` and `migrate`, then points `current` at the release and restarts gunicorn. It waits for `/readyz/`, seeds an empty database, keeps the last five releases, and checks the public address answers. Anything failing before the switch leaves the previous release serving; rollback is pointing `current` back and restarting.
 - **Database settings**: psycopg 3 with Django's connection pool; Postgres bounds every statement (`statement_timeout = 10s`, `lock_timeout = 8s`, `idle_in_transaction_session_timeout = 60s`), because gunicorn's timeout doesn't under threads.
@@ -250,7 +245,7 @@ flowchart LR
 | Layer | Tools | What it covers |
 |---|---|---|
 | Domain unit | pytest, Hypothesis | Rounding and currency precision, conversion, percentiles, peer fallback, the pay-equity rule, raise %, CSV reading and writing, text rules — no database |
-| API integration | pytest-django against real Postgres, each test rolled back | CRUD and validation, salary history, 409/412/428, query-count ceilings, insights on a small hand-computed company on several dates, pay equity, import preview → apply, export round trip, questions with Groq stubbed, seed, security headers, error bodies |
+| API integration | pytest-django against real Postgres, each test rolled back | CRUD and validation, salary history, 409/412/428, query-count ceilings, insights on a small hand-computed company on several dates, pay equity, import preview → apply, export round trip, seed, security headers, error bodies |
 | Frontend | Vitest, Testing Library, stubbed `fetch` | Forms, URL state, raise preview maths, error display |
 | Browser | Playwright in Chromium against the built app served by Django (`make browser-tests`) | A raise, add then delete, the two-person clash, chart scale, headcount; axe on every page and dialog |
 
@@ -273,7 +268,7 @@ acme-salary/
 │   │   ├── reference/    countries, currencies with fixed rates, departments
 │   │   ├── employees/    model · services · selectors · API · export · seed command
 │   │   ├── compensation/ salary history: model · services · selectors · API
-│   │   ├── analytics/    SQL, selectors, pay equity, questions (Groq) and API (read-only)
+│   │   ├── analytics/    SQL, selectors, pay equity and API (read-only)
 │   │   └── imports/      CSV preview and apply
 │   └── tests/            unit/, integration/
 ├── frontend/src/         api/, features/{insights,employees,salaries,imports,reference}/, components/, lib/

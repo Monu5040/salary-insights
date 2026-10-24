@@ -29,6 +29,3 @@ Object.defineProperty(window, "matchMedia", {
 // log "Not implemented" on every table and select.
 const getComputedStyle = window.getComputedStyle.bind(window);
 window.getComputedStyle = (element: Element) => getComputedStyle(element);
-
-// jsdom doesn't lay pages out, so it has no scrollIntoView; "Open in the explorer" calls it.
-Element.prototype.scrollIntoView = () => {};

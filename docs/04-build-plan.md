@@ -15,7 +15,7 @@ Thin vertical slices, each demoable and tested. Docs before code. A commit at ev
 | M6 | Screens | directory · record · add and edit forms · Change salary with an exact preview · insights dashboard and explorer · peers card | Frontend tests for each flow |
 | M7 | Hardening | security headers and CSP · Django serves the built app · error and empty states · accessibility · Playwright | Browser tests and axe green in CI |
 | M8 | Ship | VM setup and deploy scripts · CD on every green push to `main` · README | The live URL works from a clean browser |
-| M9 | Optional extras | effective-dated salary history, back- and future-dated · insights on any date · pay equity by role · questions in plain English through Groq · CSV import (preview, then whole file or nothing) and export | Each covered by API, frontend and browser tests; deployed |
+| M9 | Optional extras | effective-dated salary history, back- and future-dated · insights on any date · pay equity by role · CSV import (preview, then whole file or nothing) and export | Each covered by API, frontend and browser tests; deployed |
 | — | Next, if wanted | sign-in and roles before real data · audit log | — |
 
 **Cut line.** M0–M6 plus M8 is the demo. M7's security headers stay in even when time is short; the rest of M7 goes before any core feature does.
@@ -37,7 +37,6 @@ The problem → find an employee → record a +7% raise with its preview → ins
 | Risk | Mitigation |
 |---|---|
 | Scope creep | The interviewer's answers fix scope; optional extras (M9) only after M8 ships, minimal versions, and nothing the brief calls not required |
-| A question service that is down or misreads | The answer says what the question was read as; anything outside the allow-lists is refused; the rest of the app never depends on it |
 | Subtle money bugs in generated code | Domain tests first; property-based tests for rounding and conversion |
 | An open demo gets vandalized | Generated data only, reseeded nightly |
 | The live URL is down when the reviewer opens it | systemd restarts the app; the deploy checks the public address answers |

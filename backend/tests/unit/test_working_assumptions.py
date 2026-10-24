@@ -31,9 +31,7 @@ def test_org_time_zone_must_exist(settings: Settings) -> None:
     assert error_ids() == ["acme.E002"]
 
 
-@pytest.mark.parametrize(
-    "name", ["MIN_GROUP_SIZE", "GROQ_TIMEOUT_SECONDS", "IMPORT_MAX_MB", "IMPORT_MAX_ROWS"]
-)
+@pytest.mark.parametrize("name", ["MIN_GROUP_SIZE", "IMPORT_MAX_MB", "IMPORT_MAX_ROWS"])
 def test_limits_must_be_at_least_one(settings: Settings, name: str) -> None:
     setattr(settings, name, 0)
     assert error_ids() == ["acme.E003"]

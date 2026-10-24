@@ -4,38 +4,27 @@ from typing import Any
 
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
-from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from apps.analytics import questions, selectors
+from apps.analytics import selectors
 from apps.analytics.presets import PRESETS
 from apps.analytics.serializers import (
-    AskSerializer,
     EquityQuery,
     EquitySerializer,
     ExploreQuery,
     ExploreSerializer,
     InsightQuery,
     PresetSerializer,
-    QuestionSerializer,
     SummarySerializer,
 )
 from apps.analytics.sql import Filters
 from apps.core import clock
-from apps.core.errors import ApiProblem, Unprocessable
+from apps.core.errors import Unprocessable
 from apps.core.pagination import page_of_list
 from domain.fx import MissingRate
 from domain.money import money_text
-
-
-class QuestionsUnavailable(ApiProblem):
-    """503: the question box has no Groq key, or Groq didn't answer."""
-
-    status_code = 503
-    default_code = "questions_unavailable"
 
 
 def _query(kind: type[InsightQuery], data: Any) -> dict[str, Any]:
@@ -147,50 +136,6 @@ class EquityView(APIView):
             ],
         }
         return Response(EquitySerializer(answer).data)
-
-
-class QuestionThrottle(AnonRateThrottle):
-    """The demo is open, and every question costs a Groq call: a few a minute per address."""
-
-    scope = "questions"
-
-
-class AskView(APIView):
-    throttle_classes = [QuestionThrottle]
-
-    @extend_schema(request=QuestionSerializer, responses=AskSerializer)
-    def post(self, request: Request) -> Response:
-        """A question in plain English, answered by the explorer (design §4). 422 when it
-        can't be turned into an explorer query; 503 when Groq isn't set up or didn't answer."""
-        form = QuestionSerializer(data=request.data)
-        form.is_valid(raise_exception=True)
-        question = form.validated_data["question"]
-        try:
-            reading = questions.interpret(question, clock.today())
-        except questions.NotConfigured as error:
-            raise QuestionsUnavailable(str(error)) from None
-        except questions.ServiceFailed:
-            raise QuestionsUnavailable("The question service didn't answer. Try again.") from None
-        if reading.get("understood") is False:
-            raise Unprocessable(
-                "That question isn't one the explorer can answer. Ask about salaries, payroll "
-                "or headcount, by country, department, job title or tenure."
-            )
-        query = questions.as_query(reading)
-        try:
-            params = _query(ExploreQuery, query)
-        except ValidationError:
-            raise Unprocessable(
-                "The question couldn't be turned into an explorer query. Try rephrasing it."
-            ) from None
-        summary = reading.get("summary")
-        body = {
-            "question": question,
-            "summary": summary if isinstance(summary, str) and summary else "Here is the answer.",
-            "query": query,
-            "answer": _explore(params),
-        }
-        return Response(AskSerializer(body).data)
 
 
 class PresetsView(APIView):

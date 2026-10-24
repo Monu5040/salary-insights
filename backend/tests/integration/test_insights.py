@@ -1,4 +1,4 @@
-"""Insights on a small hand-computed company (design §4; edge cases #4, #22, #24).
+"""Insights on a small hand-computed company (design §4; edge cases #4, #22 to #25, #44, #51).
 
 In USD at the fixed rates from the reference data (INR at 0.0115 USD):
 
@@ -14,7 +14,6 @@ Payroll 358,000; median (46,000 + 69,000) / 2 = 57,500; mean 59,666.67. Everyone
 15 Jan 2024; Ana has a raise to ₹22,00,000 agreed from 1 Oct 2026, after today (30 Sep 2026).
 """
 
-import json
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -24,7 +23,6 @@ from django.test import Client
 from pytest_django import DjangoAssertNumQueries
 from pytest_django.fixtures import Settings
 
-from apps.analytics import questions
 from apps.analytics.presets import PRESETS
 from apps.analytics.serializers import ExploreQuery
 from apps.employees.models import Employee
@@ -282,87 +280,3 @@ class TestPayEquity:
         self, client: Client, company: dict[str, Employee]
     ) -> None:
         assert get(client, "pay-equity/")["count"] == 0  # groups of 2 and 3 are under 5
-
-
-class TestQuestions:
-    def ask(self, client: Client, question: str = "Payroll by country?") -> Any:
-        return client.post(URL + "ask/", {"question": question}, content_type="application/json")
-
-    def test_turns_a_question_into_an_explorer_answer(
-        self,
-        client: Client,
-        company: dict[str, Employee],
-        settings: Settings,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        settings.GROQ_API_KEY = "test-key"
-        sent: list[str] = []
-
-        def reply(system: str, question: str) -> str:
-            sent.append(system + question)
-            reading = {
-                "metric": ["payroll"],
-                "by": ["country"],
-                "country": [],
-                "department": [],
-                "currency": None,
-                "as_of": None,
-                "summary": "Payroll by country, in USD.",
-                "understood": True,
-            }
-            return json.dumps(reading)
-
-        monkeypatch.setattr(questions, "_chat", reply)
-
-        body = self.ask(client).json()
-
-        assert body["summary"] == "Payroll by country, in USD."
-        assert body["query"] == {
-            "metric": ["payroll"],
-            "by": ["country"],
-            "country": [],
-            "department": [],
-        }
-        rows = [(g["labels"]["country"], g["values"]["payroll"]) for g in body["answer"]["groups"]]
-        assert rows == [("India", "168000.00"), ("United States", "190000.00")]
-        assert "IN=India" in sent[0] and "1800000" not in sent[0]  # no salaries leave
-
-    @pytest.mark.parametrize(
-        "reading",
-        [
-            {"metric": ["salary_sum"]},
-            {"metric": ["median"], "by": ["gender"]},
-            {"metric": ["median"], "by": ["country", "country"]},
-            {"understood": False},
-        ],
-    )
-    def test_anything_outside_the_allow_lists_is_refused(
-        self,
-        client: Client,
-        settings: Settings,
-        monkeypatch: pytest.MonkeyPatch,
-        reading: dict[str, Any],
-    ) -> None:
-        settings.GROQ_API_KEY = "test-key"
-        monkeypatch.setattr(questions, "_chat", lambda system, question: json.dumps(reading))
-
-        assert self.ask(client).status_code == 422
-
-    def test_without_a_key_it_says_so(self, client: Client, settings: Settings) -> None:
-        settings.GROQ_API_KEY = ""
-
-        response = self.ask(client)
-
-        assert response.status_code == 503
-        assert "no Groq key" in response.json()["detail"]
-
-    def test_a_reply_that_isnt_json_is_a_503(
-        self, client: Client, settings: Settings, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        settings.GROQ_API_KEY = "test-key"
-        monkeypatch.setattr(questions, "_chat", lambda system, question: "Sure! Here you go")
-
-        assert self.ask(client).status_code == 503
-
-    def test_a_long_question_is_refused(self, client: Client) -> None:
-        assert self.ask(client, "x" * 301).status_code == 400

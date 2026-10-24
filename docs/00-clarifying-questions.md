@@ -26,7 +26,7 @@ The interviewer replied before any code was written. Each answer, and what it ch
 | 2 | Annual gross base salary for full-time employees | One salary per employee: an amount and its currency |
 | 3 | Current salary is enough; effective-dated history is optional | Effective-dated history, back- and future-dated, with the current salary derived for any day |
 | 4 | Keep original currencies, or one reporting currency at fixed rates; no live rates | Salaries stay in their own currency; insights convert to a reporting currency (USD by default) at fixed budget rates kept as reference data |
-| 5 | Focused dashboards and breakdowns by country, department or job title; pay equity and natural language optional | A dashboard of those breakdowns plus a group-by explorer, and each employee against peers with the same job title. Pay equity compares people in the same role, without gender (see 10). One question box in plain English, through Groq |
+| 5 | Focused dashboards and breakdowns by country, department or job title; pay equity and natural language optional | A dashboard of those breakdowns plus a group-by explorer, and each employee against peers with the same job title. Pay equity compares people in the same role, without gender (see 10). No natural-language questions: the explorer covers ad-hoc ones |
 | 6 | Job levels and pay bands not required | No levels or bands; seniority shows in the job title |
 | 7 | CSV/Excel import and export optional | CSV import with a preview, applied whole or not at all; CSV export of the directory |
 | 8 | Changes can be made directly; approvals not required, audit history optional | Direct edits, no approvals and no audit log; the salary history records each change's date and reason. Concurrent edits are still detected |

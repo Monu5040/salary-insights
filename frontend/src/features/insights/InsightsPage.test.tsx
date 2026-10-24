@@ -2,8 +2,8 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import type { Asked, Exploration, Group, PayEquity, Preset } from "../../api/insights";
-import { json, lastSent, problem, REFERENCE, requested, stubApi } from "../../test/api";
+import type { Exploration, Group, PayEquity, Preset } from "../../api/insights";
+import { json, problem, REFERENCE, requested, stubApi } from "../../test/api";
 import { choose } from "../../test/antd";
 import { renderApp } from "../../test/renderApp";
 
@@ -254,61 +254,5 @@ describe("Pay equity", () => {
     expect(hana).toHaveAttribute("href", "/employees/5");
     expect(within(equity).getByText("261%")).toBeInTheDocument();
     expect(within(equity).getByText("$34,500")).toBeInTheDocument();
-  });
-});
-
-describe("Questions in plain English", () => {
-  const ASKED: Asked = {
-    question: "Payroll by country",
-    summary: "Payroll by country, in USD.",
-    query: { metric: ["payroll"], by: ["country"], country: [], department: [] },
-    answer: explore("?metric=payroll&by=country"),
-  };
-
-  async function ask(question = "Payroll by country") {
-    renderApp("/insights");
-    const box = await screen.findByLabelText("Question");
-    fireEvent.change(box, { target: { value: question } });
-    await userEvent.click(screen.getByRole("button", { name: "Ask" }));
-  }
-
-  it("shows what the question was read as, and the answer", async () => {
-    const api = stub({ "POST /api/v1/analytics/ask/": () => json(ASKED) });
-    await ask();
-
-    const box = await card("Ask a question");
-    expect(await within(box).findByText("Payroll by country, in USD.")).toBeInTheDocument();
-    expect(within(box).getByText("United States")).toBeInTheDocument();
-    expect(lastSent(api, "POST").body).toEqual({ question: "Payroll by country" });
-  });
-
-  it("opens the reading in the explorer, to refine it there", async () => {
-    const api = stub({ "POST /api/v1/analytics/ask/": () => json(ASKED) });
-    await ask();
-    const box = await card("Ask a question");
-
-    await userEvent.click(await within(box).findByRole("button", { name: "Open in the explorer" }));
-
-    const explored = requested(api).filter((url) => url.startsWith("/api/v1/analytics/explore/"));
-    expect(explored.at(-1)).toBe("/api/v1/analytics/explore/?metric=payroll&by=country");
-  });
-
-  it("says why when a question can't be answered", async () => {
-    stub({
-      "POST /api/v1/analytics/ask/": () =>
-        problem(422, "That question isn't one the explorer can answer."),
-    });
-    await ask("What's for lunch?");
-
-    expect(
-      await screen.findByText("That question isn't one the explorer can answer."),
-    ).toBeInTheDocument();
-  });
-
-  it("asks people to wait when they ask too often", async () => {
-    stub({ "POST /api/v1/analytics/ask/": () => problem(429, "Request was throttled.") });
-    await ask();
-
-    expect(await screen.findByText("Too many questions: wait a minute.")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { getJson, sendJson } from "./http";
+import { getJson } from "./http";
 
 /** What every number in an answer is relative to (design §4). */
 export type Answer = {
@@ -62,17 +62,6 @@ export type PayEquity = Answer & {
 };
 
 /** The explorer parameters a question became. */
-export type AskedQuery = {
-  metric: Metric[];
-  by: Dimension[];
-  country: string[];
-  department: number[];
-  currency?: string;
-  as_of?: string;
-};
-
-export type Asked = { question: string; summary: string; query: AskedQuery; answer: Exploration };
-
 export type Preset = {
   id: string;
   title: string;
@@ -88,4 +77,3 @@ export const fetchExplore = (query: string) => getJson<Exploration>(`${BASE}expl
 export const fetchPresets = () => getJson<Preset[]>(`${BASE}presets/`);
 export const fetchPayEquity = (query: string) =>
   getJson<PayEquity>(`${BASE}pay-equity/?${query}`);
-export const ask = (question: string) => sendJson<Asked>("POST", `${BASE}ask/`, { question });

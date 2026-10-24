@@ -44,10 +44,6 @@ class EquityQuery(InsightQuery, PageQuery):
     pass
 
 
-class QuestionSerializer(serializers.Serializer[Any]):
-    question = serializers.CharField(max_length=300, help_text="In plain English")
-
-
 class AnswerSerializer(serializers.Serializer[Any]):
     """What every number in an answer is relative to (design §4)."""
 
@@ -98,13 +94,6 @@ class EquitySerializer(AnswerSerializer):
     page = serializers.IntegerField()
     page_size = serializers.IntegerField()
     results = OutlierSerializer(many=True)
-
-
-class AskSerializer(serializers.Serializer[Any]):
-    question = serializers.CharField()
-    summary = serializers.CharField(help_text="What the question was read as")
-    query = serializers.DictField(help_text="The explorer parameters it became")
-    answer = ExploreSerializer()
 
 
 class PresetSerializer(serializers.Serializer[Any]):

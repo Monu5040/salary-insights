@@ -1,6 +1,6 @@
 # Salary Insights
 
-Salary management for ACME's HR team: 10,000 employees across several countries, moved off spreadsheets into a web app where the HR Manager keeps salary history correct and answers pay questions in seconds: from the dashboard, the explorer, or a question typed in plain English. Sheets come in and go out as CSV.
+Salary management for ACME's HR team: 10,000 employees across several countries, moved off spreadsheets into a web app where the HR Manager keeps salary history correct and answers pay questions in seconds, from the dashboard or the explorer. Sheets come in and go out as CSV.
 
 Django 5.2 + DRF · React + TypeScript + Ant Design · PostgreSQL.
 
@@ -16,7 +16,7 @@ make seed      # 10,000 demo employees with salary history
 make dev       # database, API and UI together
 ```
 
-Open **http://localhost:5180**. Ctrl+C stops the servers. To try questions in plain English locally, set `GROQ_API_KEY` (from console.groq.com) before `make dev`; without it the question box says it isn't set up and everything else works.
+Open **http://localhost:5180**. Ctrl+C stops the servers.
 
 | Command | What it does |
 |---|---|
@@ -35,7 +35,7 @@ The ports are project-specific, so this runs alongside other local apps on 5173 
 
 One Ubuntu VM, set up once with [`deploy/setup-vm.sh`](deploy/setup-vm.sh): PostgreSQL, gunicorn under systemd, a nightly reset timer, and a Cloudflare tunnel for the public HTTPS address. Every green push to `main` runs [`deploy/deploy.sh`](deploy/deploy.sh) from CI. It builds the frontend, uploads a new release, migrates, switches over, restarts and checks the public address. Design §10 has the details.
 
-CI needs two repository secrets: `DEPLOY_SSH_KEY` (the deploy user's private key) and `DEPLOY_KNOWN_HOSTS` (the VM's host key line). The Groq key lives only on the VM, as `GROQ_API_KEY` in `/opt/acme-salary/.env`.
+CI needs two repository secrets: `DEPLOY_SSH_KEY` (the deploy user's private key) and `DEPLOY_KNOWN_HOSTS` (the VM's host key line).
 
 ## How it was designed
 

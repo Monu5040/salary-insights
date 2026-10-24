@@ -82,17 +82,14 @@ How each case is handled and where it is tested. **U** domain unit · **I** API 
 | 48 | Importing the same file twice, or an exported sheet | Nothing to change: the export writes the import's columns | I |
 | 49 | An exported cell starting with `=`, `+`, `-` or `@` | Prefixed with `'`, so Excel never runs it as a formula; importing removes the `'` again | U, I |
 | 50 | Non-Latin names garbled when Excel opens the export | Written as UTF-8 with a byte-order mark | U, I |
-| 55 | Ambiguous dates in a file (03/04/2026) | Never guessed: ISO dates always work, others only in the format the uploader picks | U, I |
-| 56 | A file with some bad rows | Every row error is listed with its line and column, and nothing is applied until the file is clean: the whole file or none of it | U, I |
-| 57 | Semicolons, tabs, header variants ("Emp Code"), the same employee twice | Delimiters detected, headers matched without case or punctuation, every duplicate row flagged | U |
+| 52 | Ambiguous dates in a file (03/04/2026) | Never guessed: ISO dates always work, others only in the format the uploader picks | U, I |
+| 53 | A file with some bad rows | Every row error is listed with its line and column, and nothing is applied until the file is clean: the whole file or none of it | U, I |
+| 54 | Semicolons, tabs, header variants ("Emp Code"), the same employee twice | Delimiters detected, headers matched without case or punctuation, every duplicate row flagged | U |
 
-## Pay equity and questions
+## Pay equity
 | # | Case | Behavior | Test |
 |---|---|---|---|
 | 51 | Too few people in the same role to judge | Nobody is flagged unless their peer group (same job title, in their country when there are enough, else everywhere) has at least `MIN_GROUP_SIZE` people | I |
-| 52 | A question the explorer can't answer, or a reply outside its allow-lists | 422 saying what can be asked; the model's reply goes through the explorer's own query serializer, so it never reaches the SQL | I |
-| 53 | No Groq key, or Groq is down or answers nonsense | 503 with a plain message; every other screen works as before | U, I |
-| 54 | One address asking many questions on the open demo | Throttled per address (10 a minute by default) with a 429, so nobody can run up the Groq bill | — |
 
 ## Screens
 | # | Case | Behavior | Test |
