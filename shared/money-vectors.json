@@ -1,0 +1,22 @@
+{
+  "description": "Golden vectors for money rounding, shared by backend and frontend tests so a raise preview always equals what the server saves. Amounts are strings to stay exact. Rounding is half up to the currency's minor unit.",
+  "round_to_minor_unit": [
+    { "amount": "1234.565", "minor_units": 2, "expected": "1234.57" },
+    { "amount": "1234.5649", "minor_units": 2, "expected": "1234.56" },
+    { "amount": "0.005", "minor_units": 2, "expected": "0.01" },
+    { "amount": "100.5", "minor_units": 0, "expected": "101" },
+    { "amount": "99.4999", "minor_units": 0, "expected": "99" },
+    { "amount": "1.0005", "minor_units": 3, "expected": "1.001" },
+    { "amount": "1.0004", "minor_units": 3, "expected": "1.000" },
+    { "amount": "1800000", "minor_units": 2, "expected": "1800000.00" }
+  ],
+  "apply_raise": [
+    { "amount": "1800000.00", "percent": "7", "minor_units": 2, "expected": "1926000.00" },
+    { "amount": "5000000", "percent": "3.5", "minor_units": 0, "expected": "5175000" },
+    { "amount": "1234.56", "percent": "2.5", "minor_units": 2, "expected": "1265.42" },
+    { "amount": "999.99", "percent": "0.05", "minor_units": 2, "expected": "1000.49" },
+    { "amount": "2000", "percent": "0.025", "minor_units": 0, "expected": "2001" },
+    { "amount": "1000.000", "percent": "1.25", "minor_units": 3, "expected": "1012.500" },
+    { "amount": "85000.00", "percent": "-5", "minor_units": 2, "expected": "80750.00" }
+  ]
+}
