@@ -9,7 +9,7 @@ Django 5.2 + DRF · React + TypeScript + Ant Design · PostgreSQL.
 You need Docker (for PostgreSQL), [uv](https://docs.astral.sh/uv/) and Node 22.
 
 ```bash
-make install   # backend and frontend dependencies
+make install   # backend, frontend and browser-test dependencies
 make seed      # 10,000 demo employees with their salaries
 make dev       # database, API and UI together
 ```
@@ -22,6 +22,7 @@ Open **http://localhost:5180**. Ctrl+C stops the servers.
 | `make seed` | Loads 10,000 deterministic demo employees, replacing earlier demo data |
 | `make test` | Backend tests (pytest, with a coverage gate) and frontend tests (Vitest) |
 | `make lint` | ruff, strict mypy, import boundaries, ESLint and TypeScript |
+| `make e2e` | Browser tests (Playwright, Chromium) against the built app, on a database of their own: the main flows and an accessibility check of every page |
 | `make stop` | Stops the database |
 | `make help` | Lists every command |
 
@@ -43,5 +44,6 @@ Read in this order:
 ```
 backend/    Django project: config/ (settings), apps/ (features), domain/ (pure Python), tests/
 frontend/   React app: src/features/, src/components/, src/api/
+e2e/        Playwright browser tests
 docs/       questions, requirements, design, edge cases, plan
 ```
