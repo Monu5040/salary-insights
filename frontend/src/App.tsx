@@ -6,6 +6,9 @@ import { ApiStatus } from "./components/ApiStatus";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Logo } from "./components/Logo";
 import { NotFound } from "./components/NotFound";
+import { EmployeePage } from "./features/employees/EmployeePage";
+import { EmployeesPage } from "./features/employees/EmployeesPage";
+import { NewEmployeePage } from "./features/employees/NewEmployeePage";
 
 // Icons are decoration beside their words, so screen readers skip them.
 const SECTIONS = [
@@ -18,6 +21,9 @@ export function App() {
     <Routes>
       <Route element={<Shell />}>
         <Route index element={<Navigate to="/insights" replace />} />
+        <Route path="/employees" element={<EmployeesPage />} />
+        <Route path="/employees/new" element={<NewEmployeePage />} />
+        <Route path="/employees/:id" element={<EmployeePage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
