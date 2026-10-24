@@ -3,6 +3,10 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerSplitVie
 
 from apps.core.views import ConfigView
 
+# Errors Django answers itself are problem+json under /api/ (edge case #32).
+handler404 = "apps.core.errors.page_not_found"
+handler500 = "apps.core.errors.server_error"
+
 urlpatterns = [
     path("", include("apps.core.urls")),
     path("api/v1/config/", ConfigView.as_view(), name="config"),

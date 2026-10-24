@@ -37,6 +37,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.RequestIdMiddleware",
+    "apps.core.middleware.PrivateApiCacheMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.common.CommonMiddleware",
     # Nothing here signs in, and DRF's views are exempt; kept so no non-API form is ever open.
@@ -102,6 +104,7 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_USER": None,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "apps.core.errors.exception_handler",
 }
 
 SPECTACULAR_SETTINGS = {
