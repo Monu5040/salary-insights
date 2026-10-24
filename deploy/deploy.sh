@@ -11,8 +11,13 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RELEASE="$(git -C "$ROOT" rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M%S)"
 APP=/opt/acme-salary
 DIR="$APP/releases/$RELEASE"
-SSH=(ssh -o BatchMode=yes)
+# One SSH connection, opened once and shared by every step: the VM's provider sometimes drops
+# a new connection, so a deploy that opened five could fail halfway (exit 255).
+SOCKET="$(mktemp -d)/ssh"
+SSH=(ssh -o BatchMode=yes -o ConnectionAttempts=5 -o ConnectTimeout=20
+  -o ServerAliveInterval=15 -o ControlMaster=auto -o "ControlPath=$SOCKET" -o ControlPersist=600)
 [ -n "${DEPLOY_SSH_KEY:-}" ] && SSH+=(-i "$DEPLOY_SSH_KEY" -o IdentitiesOnly=yes)
+trap '"${SSH[@]}" -O exit "$HOST" 2>/dev/null || true' EXIT
 
 echo "Building the frontend"
 (cd "$ROOT/frontend" && npm ci --silent && npm run build --silent)
