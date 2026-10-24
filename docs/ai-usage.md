@@ -18,6 +18,7 @@ How AI tools were used on this project, the prompts that shaped it, and where th
 ## Prompts that shaped the work
 
 - The interviewer's clarification, pasted in full, with: "remove the commit that is beyond requirement, build as if you have started implementation after requirement gathering". The AI asked which optional items to cut (all of them), whether to rebuild the history (yes, as in-scope commits), and what the open demo should do without sign-in (reset nightly).
+- "Use this VM to host the application, use CD to deploy", then "deploy using a script, not a Dockerfile".
 - "You have overcomplicated it. Keep it simple, so that anyone can understand it, and give the high-level flow of all the features."
 - "You have made the UI, but I don't think it's attractive", then "don't worry about phone layout". The AI screenshotted every screen first, said what made each look plain, and kept the end-to-end and accessibility tests passing through the refresh.
 
@@ -37,6 +38,10 @@ How AI tools were used on this project, the prompts that shaped it, and where th
 | Hiding Ant Design's duplicate `aria-required` from axe (M7) | The AI reached for `omitDomProps`, a prop rc-select keeps private, so the fix would have done nothing | The type checker refused it, then reading rc-select's source | The one known finding is left out of the axe check, with the reason, and a test checks each required combobox carries `aria-required` |
 | The bar charts on Insights (M6) | Each row was laid out on its own, so the room for its bar depended on the words beside it, and longer labels drew shorter bars | Reviewing screenshots | Rows share one grid (CSS subgrid); a browser test checks every bar has the same track width (edge case #40) |
 | The header on narrow screens (M7) | The accessibility pass claimed WCAG 2.2 AA, but every scan ran at desktop width | Screenshots at phone width | Phones are out of scope; design §8 says AA at desktop sizes |
+| Removing the CSRF middleware with sign-in (M8) | `check --deploy --fail-level WARNING` refused the settings, which would have stopped every deploy | The deploy script's own check, on the first deploy | The middleware stays (DRF's views are exempt) and the CSRF cookie is `Secure` |
+| The first VM setup command (M8) | The SSH public key was passed to `ssh … bash -s` unquoted, so it split into words: the key became `ssh-ed25519` and the site name the key's body | Reading the script's last line, "VM ready for AAAAC3…" | Arguments quoted; the bad user key and secrets removed and made again |
+| The deploy's "seed an empty database" check (M8) | Django 5.2's `shell` prints "8 objects imported automatically" before the output, so the check never saw `False` and the live site had no employees | The live summary said headcount 0 | `shell --no-imports` |
+| HTTPS on the VM with Caddy and Let's Encrypt (M8) | Validation failed. The AI first guessed a path-MTU problem and tried clamping the TCP MSS, which changed nothing | A packet capture on the VM: the provider forwards the handshake but drops data from some of Let's Encrypt's validation regions | A Cloudflare quick tunnel from the VM, so no inbound port or certificate is needed; the MSS rule was removed |
 
 ## Rules I keep while building
 

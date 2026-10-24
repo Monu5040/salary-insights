@@ -194,7 +194,7 @@ flowchart LR
 ```
 
 - **One-time setup** (`deploy/setup-vm.sh`, as root): installs PostgreSQL, uv and cloudflared; creates the database, the secrets in `/opt/acme-salary/.env` (readable by the `deploy` user only), the `deploy` user (SSH key only; may restart the app and nothing else), the app's systemd unit, the nightly reset timer, and the tunnel.
-- **Public address.** A Cloudflare quick tunnel dials out from the VM, giving an HTTPS address on `trycloudflare.com` with no open ports and no certificate to manage. `deploy.sh` prints the current address.
+- **Public address.** The VM's provider forwards SSH but drops some inbound web traffic, so certificate authorities couldn't validate it. A Cloudflare quick tunnel dials out from the VM instead, giving an HTTPS address on `trycloudflare.com` with no open ports. Its address changes only if the tunnel restarts, and `deploy.sh` prints the current one. A named tunnel on a real domain would make it permanent.
 - **Every deploy** (`deploy/deploy.sh`, run by CI on each green push to `main`, or by hand) builds the React app, uploads a new release directory, installs the locked dependencies with uv, runs `check --deploy`, `collectstatic` and `migrate`, then points `current` at the release and restarts gunicorn. It waits for `/readyz/`, seeds an empty database, keeps the last five releases, and checks the public address answers. Anything failing before the switch leaves the previous release serving; rollback is pointing `current` back and restarting.
 - **Database settings**: psycopg 3 with Django's connection pool; Postgres bounds every statement (`statement_timeout = 10s`, `lock_timeout = 8s`, `idle_in_transaction_session_timeout = 60s`), because gunicorn's timeout doesn't under threads.
 

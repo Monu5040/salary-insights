@@ -1,6 +1,6 @@
 # Common tasks. `make dev` runs the database, the API and the UI with one command.
 .DEFAULT_GOAL := help
-.PHONY: help install db dev seed test lint fmt e2e stop
+.PHONY: help install db dev seed test lint fmt e2e deploy stop
 
 help:  ## List the commands
 	@grep -E '^[a-z0-9]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  make %-8s %s\n", $$1, $$2}'
@@ -37,6 +37,9 @@ fmt:  ## Format the backend code
 
 e2e: db  ## Run the browser tests (Playwright) against the built app, on a database of its own
 	./e2e/run.sh
+
+deploy:  ## Deploy this checkout to the demo VM (DEPLOY_HOST=deploy@<vm>; CD does this on main)
+	./deploy/deploy.sh
 
 stop:  ## Stop the database
 	docker compose down
