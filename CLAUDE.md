@@ -10,7 +10,7 @@ The docs are the spec. Read the relevant one before changing behaviour, and upda
 - `docs/04-build-plan.md`: milestones; build them in order, one thin slice at a time
 
 ## Commands (from M1)
-`make dev` · `make test` · `make lint` (ruff, mypy, import-linter, eslint, tsc) · `make seed` · `make e2e` · `make deploy`
+`make dev` · `make test` · `make lint` (ruff, mypy, import-linter, eslint, tsc) · `make seed` · `make browser-tests` · `make deploy`
 
 ## Rules
 - **Layers.** Views and serializers handle HTTP only. `services` own writes: the transaction, business rules and the version check. `selectors` own reads and analytics. `domain/` is pure Python with no Django imports. import-linter enforces this.

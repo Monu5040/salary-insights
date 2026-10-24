@@ -21,6 +21,6 @@ frontend/coverage/
 .idea/
 .vscode/
 .hypothesis/
-e2e/results/
-e2e/test-results/
-e2e/playwright-report/
+browser-tests/results/
+browser-tests/test-results/
+browser-tests/playwright-report/

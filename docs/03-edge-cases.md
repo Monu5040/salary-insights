@@ -1,6 +1,6 @@
 # 03 · Edge cases
 
-How each case is handled and where it is tested. **U** domain unit · **I** API integration (real Postgres) · **F** frontend · **E** end-to-end.
+How each case is handled and where it is tested. **U** domain unit · **I** API integration (real Postgres) · **F** frontend · **E** end-to-end, in a real browser (`browser-tests/`).
 
 ## Money and currency
 | # | Case | Behavior | Test |

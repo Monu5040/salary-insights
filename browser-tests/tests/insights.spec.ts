@@ -28,5 +28,5 @@ test("the headline counts all 10,000 seeded employees", async ({ page }) => {
   const headcount = page
     .locator(".ant-card")
     .filter({ has: page.locator(".ant-statistic-title", { hasText: "Headcount" }) });
-  await expect(headcount).toContainText(/10,00\d/); // the seed, give or take an e2e addition
+  await expect(headcount).toContainText(/10,00\d/); // the seed, give or take one a browser test adds
 });

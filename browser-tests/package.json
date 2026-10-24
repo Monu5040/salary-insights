@@ -1,5 +1,5 @@
 {
-  "name": "salary-insights-e2e",
+  "name": "salary-insights-browser-tests",
   "private": true,
   "version": "0.1.0",
   "type": "module",

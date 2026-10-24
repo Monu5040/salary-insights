@@ -61,9 +61,9 @@ test("a back-dated raise takes its place in the history, then can be removed", a
 
 test("an employee can be added, then deleted", async ({ page }) => {
   await page.goto("/employees/new");
-  await page.getByLabel("Employee code").fill("E2E-0001");
+  await page.getByLabel("Employee code").fill("BT-0001");
   await page.getByLabel("Full name").fill("Dana Example");
-  await page.getByLabel("Work email").fill("dana.e2e@acme.example");
+  await page.getByLabel("Work email").fill("dana.test@acme.example");
   await page.getByRole("combobox", { name: "Country" }).click();
   await page.getByTitle("Germany").click();
   await page.getByRole("combobox", { name: "Department" }).click();
@@ -79,7 +79,7 @@ test("an employee can be added, then deleted", async ({ page }) => {
   await page.getByRole("button", { name: "Delete" }).click();
   await page.getByRole("tooltip").getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Employees" })).toBeVisible();
-  await page.goto("/employees?q=E2E-0001");
+  await page.goto("/employees?q=BT-0001");
   await expect(page.getByText("No employees match these filters")).toBeVisible();
 });
 
@@ -92,18 +92,18 @@ test("when someone else saved first, the save is refused and Reload shows theirs
   for (const tab of [page, other]) await openEmployee(tab, 35);
 
   await other.getByRole("button", { name: "Edit details" }).click();
-  await other.getByLabel("Job title").fill("Software Engineer (e2e)");
+  await other.getByLabel("Job title").fill("Software Engineer (test)");
   await other.getByRole("button", { name: "Save" }).click();
   await expect(other.getByRole("dialog")).toBeHidden();
 
   await page.getByRole("button", { name: "Edit details" }).click();
-  await page.getByLabel("Job title").fill("Staff Engineer (e2e)");
+  await page.getByLabel("Job title").fill("Staff Engineer (test)");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(
     page.getByText("Someone else changed this employee while you were working."),
   ).toBeVisible();
   await page.getByRole("button", { name: "Reload" }).click();
 
-  await expect(page.getByLabel("Job title")).toHaveValue("Software Engineer (e2e)");
+  await expect(page.getByLabel("Job title")).toHaveValue("Software Engineer (test)");
   await other.close();
 });

@@ -78,7 +78,7 @@ jobs:
       - name: Build
         run: npm run build
 
-  e2e:
+  browser-tests:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -108,30 +108,30 @@ jobs:
           cache: npm
           cache-dependency-path: |
             frontend/package-lock.json
-            e2e/package-lock.json
+            browser-tests/package-lock.json
       - name: Install
         run: |
           (cd backend && uv sync --locked)
           (cd frontend && npm ci)
-          (cd e2e && npm ci && npx playwright install --with-deps chromium)
+          (cd browser-tests && npm ci && npx playwright install --with-deps chromium)
       - name: Types
-        run: cd e2e && npm run typecheck
+        run: cd browser-tests && npm run typecheck
       - name: Browser tests against the built app
-        run: ./e2e/run.sh
+        run: ./browser-tests/run.sh
       - name: Keep the report when a test fails
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: |
-            e2e/playwright-report/
-            e2e/test-results/
-            e2e/results/
+            browser-tests/playwright-report/
+            browser-tests/test-results/
+            browser-tests/results/
           retention-days: 7
 
   # CD: every green push to main goes to the demo VM (design §10).
   deploy:
-    needs: [backend, frontend, e2e]
+    needs: [backend, frontend, browser-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:

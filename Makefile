@@ -1,14 +1,14 @@
 # Common tasks. `make dev` runs the database, the API and the UI with one command.
 .DEFAULT_GOAL := help
-.PHONY: help install db dev seed test lint fmt e2e deploy stop
+.PHONY: help install db dev seed test lint fmt browser-tests deploy stop
 
 help:  ## List the commands
-	@grep -E '^[a-z0-9]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  make %-8s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
 
-install:  ## Install backend, frontend and end-to-end test dependencies (and the test browser)
+install:  ## Install backend, frontend and browser-test dependencies (and the test browser)
 	cd backend && uv sync
 	cd frontend && npm install
-	cd e2e && npm install && npx playwright install chromium
+	cd browser-tests && npm install && npx playwright install chromium
 
 db:  ## Start PostgreSQL in Docker and wait until it is ready
 	docker compose up -d --wait db
@@ -21,7 +21,7 @@ dev: db  ## Run the API and the UI together; Ctrl+C stops both
 	(cd frontend && npm run dev) & \
 	wait
 
-seed: db  ## Load 10,000 demo employees with their salaries (replaces demo data)
+seed: db  ## Load 10,000 demo employees with salary history (replaces demo data)
 	cd backend && uv run python manage.py migrate -v 0 && uv run python manage.py seed --reset
 
 test: db  ## Run the backend and frontend tests
@@ -35,8 +35,8 @@ lint:  ## Lint, check formatting, types and import boundaries
 fmt:  ## Format the backend code
 	cd backend && uv run ruff format . && uv run ruff check --fix .
 
-e2e: db  ## Run the browser tests (Playwright) against the built app, on a database of its own
-	./e2e/run.sh
+browser-tests: db  ## Run the browser tests (Playwright) against the built app, on a database of its own
+	./browser-tests/run.sh
 
 deploy:  ## Deploy this checkout to the demo VM (DEPLOY_HOST=deploy@<vm>; CD does this on main)
 	./deploy/deploy.sh

@@ -252,7 +252,7 @@ flowchart LR
 | Domain unit | pytest, Hypothesis | Rounding and currency precision, conversion, percentiles, peer fallback, the pay-equity rule, raise %, CSV reading and writing, text rules — no database |
 | API integration | pytest-django against real Postgres, each test rolled back | CRUD and validation, salary history, 409/412/428, query-count ceilings, insights on a small hand-computed company on several dates, pay equity, import preview → apply, export round trip, questions with Groq stubbed, seed, security headers, error bodies |
 | Frontend | Vitest, Testing Library, stubbed `fetch` | Forms, URL state, raise preview maths, error display |
-| End-to-end | Playwright in Chromium against the built app served by Django (`make e2e`) | A raise, add then delete, the two-person clash, chart scale, headcount; axe on every page and dialog |
+| Browser | Playwright in Chromium against the built app served by Django (`make browser-tests`) | A raise, add then delete, the two-person clash, chart scale, headcount; axe on every page and dialog |
 
 Determinism: an injected clock (no `date.today()` in business logic), fixed random seeds, no network. CI runs ruff, mypy (strict, with django-stubs), import-linter, `makemigrations --check`, `check --deploy` and pytest with a 90% coverage gate; then ESLint, tsc, Vitest and the build; then the browser tests; then, on `main`, the deploy.
 
@@ -266,7 +266,7 @@ Determinism: an injected clock (no `date.today()` in business logic), fixed rand
 acme-salary/
 ├── docs/                 questions, requirements, design, edge cases, plan, AI usage
 ├── backend/
-│   ├── config/           settings/{base,dev,test,e2e,prod}.py, urls.py, wsgi.py
+│   ├── config/           settings/{base,dev,test,browser_tests,prod}.py, urls.py, wsgi.py
 │   ├── domain/           pure Python: money, fx, stats, text, CSV reading and writing
 │   ├── apps/
 │   │   ├── core/         clock, errors, request id, health, checks, the SPA view
@@ -277,7 +277,7 @@ acme-salary/
 │   │   └── imports/      CSV preview and apply
 │   └── tests/            unit/, integration/
 ├── frontend/src/         api/, features/{insights,employees,salaries,imports,reference}/, components/, lib/
-├── e2e/                  Playwright
+├── browser-tests/        Playwright, the whole app in a real browser
 ├── deploy/               setup-vm.sh, deploy.sh
 └── .github/workflows/ci.yml
 ```

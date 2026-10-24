@@ -24,7 +24,7 @@ Open **http://localhost:5180**. Ctrl+C stops the servers. To try questions in pl
 | `make seed` | Loads 10,000 deterministic demo employees with salary history, replacing earlier demo data |
 | `make test` | Backend tests (pytest, with a coverage gate) and frontend tests (Vitest) |
 | `make lint` | ruff, strict mypy, import boundaries, ESLint and TypeScript |
-| `make e2e` | Browser tests (Playwright, Chromium) against the built app, on a database of their own: the main flows and an accessibility check of every page |
+| `make browser-tests` | Browser tests (Playwright, Chromium) against the built app, on a database of their own: the main flows and an accessibility check of every page |
 | `make deploy` | Deploys this checkout to the demo VM (`DEPLOY_HOST=deploy@<vm>`); CI does this on every green push to `main` |
 | `make stop` | Stops the database |
 | `make help` | Lists every command |
@@ -53,7 +53,7 @@ Read in this order:
 ```
 backend/    Django project: config/ (settings), apps/ (features), domain/ (pure Python), tests/
 frontend/   React app: src/features/, src/components/, src/api/
-e2e/        Playwright browser tests
+browser-tests/  Playwright tests of the whole app in a real browser
 deploy/     VM setup and deploy scripts
 docs/       questions, requirements, design, edge cases, plan
 ```

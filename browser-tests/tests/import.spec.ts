@@ -27,7 +27,7 @@ test("an exported sheet imports back with nothing to change", async ({ page }) =
 
 test("a sheet adding an employee is previewed, applied, then found", async ({ page }) => {
   const row =
-    "E2E-0100,Imogen Import,imogen.e2e@acme.example,GB,Legal,Legal Counsel," +
+    "BT-0100,Imogen Import,imogen.test@acme.example,GB,Legal,Legal Counsel," +
     "15/03/2026,82000,GBP,15/03/2026,";
   await page.goto("/import");
   await page.locator("input[type=file]").setInputFiles({
@@ -43,7 +43,7 @@ test("a sheet adding an employee is previewed, applied, then found", async ({ pa
   await page.getByRole("tooltip").getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText("Imported new-starter.csv")).toBeVisible();
 
-  await page.goto("/employees?q=E2E-0100");
+  await page.goto("/employees?q=BT-0100");
   await expect(page.getByRole("link", { name: "Imogen Import" })).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "Imogen Import" })).toContainText("82,000");
 });
