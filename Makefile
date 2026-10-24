@@ -38,7 +38,7 @@ fmt:  ## Format the backend code
 browser-tests: db  ## Run the browser tests (Playwright) against the built app, on a database of its own
 	./browser-tests/run.sh
 
-deploy:  ## Deploy this checkout to the demo VM (DEPLOY_HOST=deploy@<vm>; CD does this on main)
+deploy:  ## Deploy this checkout to the demo VM by hand (DEPLOY_HOST=deploy@<vm>); CD is pulled by the VM
 	./deploy/deploy.sh
 
 stop:  ## Stop the database

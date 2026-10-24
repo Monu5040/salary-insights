@@ -14,7 +14,7 @@ Thin vertical slices, each demoable and tested. Docs before code. A commit at ev
 | M5 | Insights API | summary · explorer · dashboard presets · peers | Tests on a small hand-computed company |
 | M6 | Screens | directory · record · add and edit forms · Change salary with an exact preview · insights dashboard and explorer · peers card | Frontend tests for each flow |
 | M7 | Hardening | security headers and CSP · Django serves the built app · error and empty states · accessibility · Playwright | Browser tests and axe green in CI |
-| M8 | Ship | VM setup and deploy scripts · CD on every green push to `main` · README | The live URL works from a clean browser |
+| M8 | Ship | VM setup and deploy scripts · CD: the VM pulls every green push to `main` · README | The live URL works from a clean browser |
 | M9 | Optional extras | effective-dated salary history, back- and future-dated · insights on any date · pay equity by role · CSV import (preview, then whole file or nothing) and export | Each covered by API, frontend and browser tests; deployed |
 | — | Next, if wanted | sign-in and roles before real data · audit log | — |
 

@@ -43,7 +43,7 @@ flowchart LR
 | D8 | Analytics in SQL: parameterized CTEs with allow-listed pieces | Loading rows into pandas | Data stays in the database; one round trip per answer. | OLAP scale: rollups. |
 | D9 | No sign-in; the demo resets nightly | Sessions and roles | The brief asks for one persona and no authentication. Anyone can reach the demo, so a timer reseeds it every night. | Real data: sign-in first (§9). |
 | D11 | Import in **two stateless requests**: preview, then apply the same file with the preview's fingerprint | A stored upload and a background worker | A 10,000-row file is planned in about a second, so nothing needs storing or queueing between the steps. | Files that take longer than a request. |
-| D10 | Deploy with a shell script and systemd on one VM | Containers; a platform | No hosting preference; one VM is enough, and plain scripts are easy to read. | More than one machine. |
+| D10 | Deploy with shell scripts and systemd on one VM, **pulled by the VM** from GitHub once CI passes | Containers; a platform; CI pushing over SSH | No hosting preference; one VM is enough, and plain scripts are easy to read. The VM's provider drops data from GitHub's runners, so CI can't push reliably, and a pull needs no deploy key in GitHub. | More than one machine. |
 
 ### Configuration
 
@@ -221,12 +221,14 @@ flowchart LR
     T --> G["gunicorn :8000 (systemd)"]
     G --> P[(PostgreSQL 16)]
     R["nightly reset timer"] --> P
+    D["pull timer, every 2 min"] -- "head of main, once CI passed" --> GH[(GitHub)]
   end
 ```
 
-- **One-time setup** (`deploy/setup-vm.sh`, as root): installs PostgreSQL, uv and cloudflared; creates the database, the secrets in `/opt/acme-salary/.env` (readable by the `deploy` user only), the `deploy` user (SSH key only; may restart the app and nothing else), the app's systemd unit, the nightly reset timer, and the tunnel.
+- **One-time setup** (`deploy/setup-vm.sh`, as root): installs PostgreSQL, uv, Node.js (the official build, checksum checked) and cloudflared; creates the database, the secrets in `/opt/acme-salary/.env` (readable by the `deploy` user only), the `deploy` user (SSH key only; may restart the app and nothing else), the app's systemd unit, the nightly reset timer, the pull timer, and the tunnel.
 - **Public address.** The VM's provider forwards SSH but drops some inbound web traffic, so certificate authorities couldn't validate it. A Cloudflare quick tunnel dials out from the VM instead, giving an HTTPS address on `trycloudflare.com` with no open ports. Its address changes only if the tunnel restarts, and `deploy.sh` prints the current one. A named tunnel on a real domain would make it permanent.
-- **Every deploy** (`deploy/deploy.sh`, run by CI on each green push to `main`, or by hand) builds the React app, uploads a new release directory, installs the locked dependencies with uv, runs `check --deploy`, `collectstatic` and `migrate`, then points `current` at the release and restarts gunicorn. It waits for `/readyz/`, seeds an empty database, keeps the last five releases, and checks the public address answers. Anything failing before the switch leaves the previous release serving; rollback is pointing `current` back and restarting.
+- **Continuous deployment is pulled by the VM** (`deploy/pull.sh`, a systemd timer every two minutes, D10). It reads the head of `main` with `git ls-remote`, asks GitHub's API whether that commit's CI run passed, and if so, and it isn't deployed yet, downloads the commit, builds the React app and installs it. It never deploys an older commit, runs one deploy at a time, and tries a failing commit once rather than every two minutes. Pulled, not pushed: the provider drops data from some networks, GitHub's runners among them, so a push from CI stalled halfway; the requests the VM makes itself get through, and GitHub needs no key to the VM.
+- **Every release** (`deploy/release.sh`, used by the pull and by `make deploy` from a laptop) installs the locked dependencies with uv, runs `check --deploy`, `collectstatic` and `migrate`, then points `current` at the release and restarts gunicorn. It waits for `/readyz/`, seeds an empty database, and keeps the last five releases. Anything failing before the switch leaves the previous release serving; rollback is pointing `current` back and restarting.
 - **Database settings**: psycopg 3 with Django's connection pool; Postgres bounds every statement (`statement_timeout = 10s`, `lock_timeout = 8s`, `idle_in_transaction_session_timeout = 60s`), because gunicorn's timeout doesn't under threads.
 
 | Operation | Budget (server) | How |
@@ -273,6 +275,6 @@ acme-salary/
 │   └── tests/            unit/, integration/
 ├── frontend/src/         api/, features/{insights,employees,salaries,imports,reference}/, components/, lib/
 ├── browser-tests/        Playwright, the whole app in a real browser
-├── deploy/               setup-vm.sh, deploy.sh
+├── deploy/               setup-vm.sh, pull.sh (CD), release.sh, deploy.sh (by hand)
 └── .github/workflows/ci.yml
 ```

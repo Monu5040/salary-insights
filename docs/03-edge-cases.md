@@ -59,7 +59,7 @@ How each case is handled and where it is tested. **U** domain unit · **I** API 
 | # | Case | Behavior | Test |
 |---|---|---|---|
 | 30 | Seed run twice, or against production | Needs `--reset`; runs only when `ENV` is `dev`, `test` or `demo` (an allow-list, so a missing or misspelled value refuses) | I |
-| 31 | A deploy whose checks or migrations fail | `deploy.sh` runs `check --deploy`, `collectstatic` and `migrate` before switching releases, so the previous release keeps serving | — |
+| 31 | A deploy whose checks or migrations fail | `release.sh` runs `check --deploy`, `collectstatic` and `migrate` before switching releases, so the previous release keeps serving | — |
 | 32 | An unknown API address, or an error no view handled | A problem (`application/problem+json`) with the request id, never Django's HTML page; a crash never shows the error itself, which may hold data. The app shows the request id to quote | I, F |
 | 33 | A model changed without a migration | `makemigrations --check` fails CI | — |
 | 34 | Insecure production settings (`DEBUG`, HSTS, cookies) | `check --deploy --fail-level WARNING` fails CI and the deploy | — |
@@ -90,6 +90,13 @@ How each case is handled and where it is tested. **U** domain unit · **I** API 
 | # | Case | Behavior | Test |
 |---|---|---|---|
 | 51 | Too few people in the same role to judge | Nobody is flagged unless their peer group (same job title, in their country when there are enough, else everywhere) has at least `MIN_GROUP_SIZE` people | I |
+
+## Deployment
+| # | Case | Behavior | Test |
+|---|---|---|---|
+| 55 | A push to main whose tests fail, or are still running | The VM deploys only the head of `main`, and only once its CI run has passed | — |
+| 56 | An older green commit after a newer one | Never deployed: only the head of `main` is | — |
+| 57 | A commit that fails to deploy | Tried once, then skipped until the next push; the previous release keeps serving | — |
 
 ## Screens
 | # | Case | Behavior | Test |

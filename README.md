@@ -25,7 +25,7 @@ Open **http://localhost:5180**. Ctrl+C stops the servers.
 | `make test` | Backend tests (pytest, with a coverage gate) and frontend tests (Vitest) |
 | `make lint` | ruff, strict mypy, import boundaries, ESLint and TypeScript |
 | `make browser-tests` | Browser tests (Playwright, Chromium) against the built app, on a database of their own: the main flows and an accessibility check of every page |
-| `make deploy` | Deploys this checkout to the demo VM (`DEPLOY_HOST=deploy@<vm>`); CI does this on every green push to `main` |
+| `make deploy` | Deploys this checkout to the demo VM by hand (`DEPLOY_HOST=deploy@<vm>`); CD needs no command |
 | `make stop` | Stops the database |
 | `make help` | Lists every command |
 
@@ -33,9 +33,7 @@ The ports are project-specific, so this runs alongside other local apps on 5173 
 
 ## Deployment
 
-One Ubuntu VM, set up once with [`deploy/setup-vm.sh`](deploy/setup-vm.sh): PostgreSQL, gunicorn under systemd, a nightly reset timer, and a Cloudflare tunnel for the public HTTPS address. Every green push to `main` runs [`deploy/deploy.sh`](deploy/deploy.sh) from CI. It builds the frontend, uploads a new release, migrates, switches over, restarts and checks the public address. Design §10 has the details.
-
-CI needs two repository secrets: `DEPLOY_SSH_KEY` (the deploy user's private key) and `DEPLOY_KNOWN_HOSTS` (the VM's host key line).
+One Ubuntu VM, set up once with [`deploy/setup-vm.sh`](deploy/setup-vm.sh): PostgreSQL, gunicorn under systemd, a nightly reset timer, and a Cloudflare tunnel for the public HTTPS address. CD is pulled by the VM: every two minutes [`deploy/pull.sh`](deploy/pull.sh) checks the head of `main`, and once its CI run has passed, downloads it, builds the frontend, migrates, switches over and restarts. GitHub needs no secrets or access to the VM. Design §10 has the details.
 
 ## How it was designed
 
