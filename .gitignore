@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+backend/staticfiles/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Local settings and editors
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/
+.hypothesis/
+e2e/results/
+e2e/test-results/
+e2e/playwright-report/
