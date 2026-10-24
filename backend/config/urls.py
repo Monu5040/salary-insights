@@ -1,7 +1,7 @@
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerSplitView
 
-from apps.core.views import ConfigView
+from apps.core.views import ConfigView, spa
 
 # Errors Django answers itself are problem+json under /api/ (edge case #32).
 handler404 = "apps.core.errors.page_not_found"
@@ -16,4 +16,7 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     # The split view loads its start-up script from a URL, so the docs need no inline script.
     path("api/docs/", SpectacularSwaggerSplitView.as_view(url_name="schema"), name="docs"),
+    # Last: every other address is a page of the React app, except unknown API and static
+    # addresses, which stay 404s.
+    re_path(r"^(?!api/|static/)", spa, name="spa"),
 ]

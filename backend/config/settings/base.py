@@ -4,6 +4,7 @@ from pathlib import Path
 
 import dj_database_url
 import django_stubs_ext
+from csp.constants import NONE, SELF, UNSAFE_INLINE
 
 from config.env import env_int, env_str
 
@@ -30,6 +31,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "csp",
     "apps.core",
     "apps.reference",
     "apps.employees",
@@ -38,6 +40,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",
     "apps.core.middleware.RequestIdMiddleware",
     "apps.core.middleware.PrivateApiCacheMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -78,6 +81,24 @@ _database["OPTIONS"] = {
 DATABASES = {"default": _database}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Content Security Policy (design §9; edge case #29): only this site's own scripts run, and
+# no inline ones, so injected markup can't run code. Ant Design injects its styles at
+# runtime, hence 'unsafe-inline' for styles only. Pages can't be framed.
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": [SELF],
+        "script-src": [SELF],
+        "style-src": [SELF, UNSAFE_INLINE],
+        "img-src": [SELF, "data:"],
+        "font-src": [SELF],
+        "connect-src": [SELF],
+        "object-src": [NONE],
+        "base-uri": [NONE],
+        "form-action": [SELF],
+        "frame-ancestors": [NONE],
+    },
+}
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
