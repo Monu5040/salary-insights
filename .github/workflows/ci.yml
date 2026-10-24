@@ -129,3 +129,31 @@ jobs:
             e2e/results/
           retention-days: 7
 
+  # CD: every green push to main goes to the demo VM (design §10).
+  deploy:
+    needs: [backend, frontend, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-demo
+      cancel-in-progress: false
+    environment: demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: SSH key and the VM's host key
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+      # Ends by checking the app answers at the tunnel's public address, and prints it.
+      - name: Deploy
+        run: ./deploy/deploy.sh
+        env:
+          DEPLOY_HOST: deploy@151.185.44.30
+          DEPLOY_SSH_KEY: /home/runner/.ssh/deploy_key
