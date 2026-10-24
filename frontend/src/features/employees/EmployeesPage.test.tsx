@@ -16,8 +16,8 @@ const BRUNO: EmployeeRow = {
   currency: "USD",
 };
 
-function stubDirectory() {
-  const page: Page<EmployeeRow> = { count: 2, page: 1, page_size: 25, results: [ASHA, BRUNO] };
+function stubDirectory(results: EmployeeRow[] = [ASHA, BRUNO]) {
+  const page: Page<EmployeeRow> = { count: results.length, page: 1, page_size: 25, results };
   return stubApi({ ...REFERENCE, "GET /api/v1/employees/": () => json(page) });
 }
 
@@ -82,13 +82,22 @@ describe("Employee directory", () => {
     expect(await screen.findByRole("heading", { name: "Add an employee" })).toBeInTheDocument();
   });
 
-  it("has no export or status filter", async () => {
+  it("exports every row with the filters and sort on screen, not just this page", async () => {
     stubDirectory();
-    renderApp("/employees");
+    renderApp("/employees?q=asha&country=IN&sort=-hire_date&page=2");
     await screen.findByText("Asha Rao");
 
-    expect(screen.queryByRole("link", { name: "Export CSV" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Former")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Export CSV/ })).toHaveAttribute(
+      "href",
+      "/api/v1/exports/employees.csv?q=asha&country=IN&sort=-hire_date",
+    );
+  });
+
+  it("says when someone's first salary starts later", async () => {
+    stubDirectory([{ ...ASHA, salary: null, currency: null }]);
+    renderApp("/employees");
+
+    expect(await screen.findByText("Starts later")).toBeInTheDocument();
   });
 });
 

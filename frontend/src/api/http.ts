@@ -10,6 +10,8 @@ export type Problem = {
   existing_id?: number;
   /** 412: the version the server has now. */
   current_version?: number;
+  /** 409 on an import: the preview worked out again, because someone changed an employee. */
+  preview?: unknown;
   /** The request's id in the server's logs, to quote when reporting a fault. */
   request_id?: string;
 };
@@ -52,6 +54,11 @@ export function sendJson<T>(
     headers: { Accept: "application/json", "Content-Type": "application/json", ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+/** Upload a form with a file. The browser sets the multipart content type itself. */
+export function sendForm<T>(url: string, form: FormData): Promise<T> {
+  return request<T>(url, { method: "POST", headers: { Accept: "application/json" }, body: form });
 }
 
 async function request<T>(url: string, init: RequestInit): Promise<T> {

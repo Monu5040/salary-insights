@@ -7,6 +7,7 @@ from django.core.management import CommandError, call_command
 from django.db import connection
 from pytest_django.fixtures import Settings
 
+from apps.compensation.models import SalaryRecord
 from apps.employees.models import Employee
 from domain.text import fold
 
@@ -17,13 +18,15 @@ def seed(**options: object) -> None:
     call_command("seed", stdout=StringIO(), **options)
 
 
-def test_loads_employees_with_their_salaries() -> None:
+def test_loads_employees_with_their_salary_history() -> None:
     seed(employees=120, seed=3)
 
     assert Employee.objects.count() == 120
+    assert SalaryRecord.objects.count() > 120
     person = Employee.objects.get(employee_code="E00001")
     assert person.search_text == fold(f"{person.full_name} E00001")
-    assert person.salary > 0 and person.currency_id == person.country.default_currency_id
+    first = person.salary_records.order_by("effective_date").first()
+    assert first is not None and (first.reason, first.effective_date) == ("hire", person.hire_date)
 
 
 def test_reset_replaces_the_demo_data() -> None:

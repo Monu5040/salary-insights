@@ -1,10 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { PlusOutlined } from "@ant-design/icons";
-import { Button, Card, Empty, Flex, Input, Table, type TableColumnsType } from "antd";
+import { DownloadOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Card,
+  Empty,
+  Flex,
+  Input,
+  Space,
+  Table,
+  type TableColumnsType,
+  Typography,
+} from "antd";
 import type { SorterResult } from "antd/es/table/interface";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
-import { DIRECTORY_PARAMS, type EmployeeRow } from "../../api/employees";
+import { DIRECTORY_PARAMS, type EmployeeRow, exportUrl } from "../../api/employees";
 import { ErrorAlert } from "../../components/ErrorAlert";
 import { PageHeader } from "../../components/PageHeader";
 import { PersonAvatar } from "../../components/PersonAvatar";
@@ -20,13 +30,19 @@ type Changes = Record<string, string | string[] | undefined>;
 const NARROWING = ["q", "country", "department"];
 
 /** The directory's API query: the page address's own parameters, in a stable order. */
-function directoryQuery(params: URLSearchParams): string {
+function directoryQuery(
+  params: URLSearchParams,
+  keys: readonly string[] = DIRECTORY_PARAMS,
+): string {
   const query = new URLSearchParams();
-  for (const key of DIRECTORY_PARAMS) {
+  for (const key of keys) {
     for (const value of params.getAll(key)) query.append(key, value);
   }
   return query.toString();
 }
+
+/** The export takes the same filters and sort, but every row, not one page. */
+const EXPORT_PARAMS = DIRECTORY_PARAMS.filter((key) => key !== "page" && key !== "page_size");
 
 export function EmployeesPage() {
   const [params, setParams] = useSearchParams();
@@ -84,13 +100,22 @@ export function EmployeesPage() {
         title="Employees"
         subtitle="Everyone at ACME and their annual base salary"
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined aria-hidden />}
-            onClick={() => void navigate("/employees/new")}
-          >
-            Add employee
-          </Button>
+          <Space>
+            <Button
+              icon={<DownloadOutlined aria-hidden />}
+              href={exportUrl(directoryQuery(params, EXPORT_PARAMS))}
+              download
+            >
+              Export CSV
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined aria-hidden />}
+              onClick={() => void navigate("/employees/new")}
+            >
+              Add employee
+            </Button>
+          </Space>
         }
       />
       <Filters params={params} onChange={update} />
@@ -179,6 +204,9 @@ function Filters({ params, onChange }: FiltersProps) {
 /** A salary in its own currency, written the way the employee's country writes it. */
 function Salary({ row }: { row: EmployeeRow }) {
   const money = useMoney(row.country.code);
+  if (row.salary === null || row.currency === null) {
+    return <Typography.Text type="secondary">Starts later</Typography.Text>;
+  }
   return (
     <span style={{ fontVariantNumeric: "tabular-nums" }}>
       {money.show(row.salary, row.currency)}

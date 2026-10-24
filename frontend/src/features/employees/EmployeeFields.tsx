@@ -1,6 +1,6 @@
 import { Alert, Form, Input, Select } from "antd";
 
-import type { EmployeeInput } from "../../api/employees";
+import type { NewEmployeeInput } from "../../api/employees";
 import { useCountries, useDepartments } from "../reference/hooks";
 import { useCurrencyOptions } from "../salaries/useMoney";
 
@@ -11,7 +11,7 @@ export function EmployeeFields({ withSalary = false }: { withSalary?: boolean })
   const countries = useCountries().data ?? [];
   const departments = useDepartments().data ?? [];
   const currencies = useCurrencyOptions();
-  const form = Form.useFormInstance<EmployeeInput>();
+  const form = Form.useFormInstance<NewEmployeeInput>();
   const countryCode = Form.useWatch("country", form);
   const currency = Form.useWatch("currency", form);
   const country = countries.find((row) => row.code === countryCode);

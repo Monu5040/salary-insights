@@ -10,22 +10,24 @@ async function openEmployee(page: Page, id: number): Promise<string> {
   return (await heading.textContent()) ?? "";
 }
 
-/** The salary on the employee's Salary card, as shown. */
-const salaryShown = (page: Page) =>
+/** The employee's Salary card. */
+const salaryCard = (page: Page) =>
   page
     .locator(".ant-card")
-    .filter({ has: page.getByRole("heading", { name: "Salary", exact: true }) })
-    .locator("strong");
+    .filter({ has: page.getByRole("heading", { name: "Salary", exact: true }) });
 
-test("a raise shows on the employee and in the directory", async ({ page }) => {
+/** The salary in force today, as the Salary card shows it. */
+const salaryShown = (page: Page) => salaryCard(page).locator("strong").first();
+
+test("a raise from today shows on the employee and in the directory", async ({ page }) => {
   const name = await openEmployee(page, 33);
   const before = await salaryShown(page).textContent();
 
-  await page.getByRole("button", { name: "Change salary" }).click();
-  const dialog = page.getByRole("dialog", { name: "Change salary" });
+  await salaryCard(page).getByRole("button", { name: "Record a change" }).click();
+  const dialog = page.getByRole("dialog", { name: "Record a salary change" });
   await dialog.getByLabel("Raise (%)").fill("4");
   await expect(dialog.getByText(/\(\+4\.0%\)/)).toBeVisible(); // the preview, before saving
-  await dialog.getByRole("button", { name: "Save salary" }).click();
+  await dialog.getByRole("button", { name: "Save change" }).click();
   await expect(dialog).toBeHidden();
 
   const after = await salaryShown(page).textContent();
@@ -35,6 +37,26 @@ test("a raise shows on the employee and in the directory", async ({ page }) => {
   await page.getByLabel("Search employees").press("Enter");
   const row = page.getByRole("row").filter({ hasText: name });
   await expect(row).toContainText(after ?? "");
+});
+
+test("a back-dated raise takes its place in the history, then can be removed", async ({
+  page,
+}) => {
+  await openEmployee(page, 34);
+
+  await salaryCard(page).getByRole("button", { name: "Record a change" }).click();
+  const dialog = page.getByRole("dialog", { name: "Record a salary change" });
+  await dialog.getByLabel("Takes effect on").fill("2025-10-01");
+  await dialog.getByLabel("Raise (%)").fill("2.5");
+  await expect(dialog.getByText(/\(\+2\.5%\)/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Save change" }).click();
+  await expect(dialog).toBeHidden();
+
+  const row = salaryCard(page).getByRole("row").filter({ hasText: "1 Oct 2025" });
+  await expect(row).toContainText("+2.50%");
+  await row.getByRole("button", { name: "Remove" }).click();
+  await page.getByRole("tooltip").getByRole("button", { name: "Remove" }).click();
+  await expect(row).toHaveCount(0);
 });
 
 test("an employee can be added, then deleted", async ({ page }) => {

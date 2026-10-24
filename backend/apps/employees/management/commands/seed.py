@@ -1,4 +1,4 @@
-"""Load deterministic demo employees with their current salaries (design §12)."""
+"""Load deterministic demo employees with their salary history (design §12)."""
 
 import time
 from argparse import ArgumentParser
@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
+from apps.compensation.models import SalaryRecord
 from apps.employees import seeding
 from apps.employees.models import Employee
 from apps.reference.models import Country, Department
@@ -19,7 +20,7 @@ ALLOWED_ENVIRONMENTS = {"dev", "test", "demo"}
 
 
 class Command(BaseCommand):
-    help = "Load deterministic demo employees. Never runs in production."
+    help = "Load deterministic demo employees with salary history. Never runs in production."
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument("--employees", type=int, default=10_000)
@@ -41,25 +42,26 @@ class Command(BaseCommand):
                 if not options["reset"]:
                     raise CommandError("Employees already exist. Run with --reset to replace them.")
                 with connection.cursor() as cursor:
-                    cursor.execute("TRUNCATE employees RESTART IDENTITY")
+                    cursor.execute("TRUNCATE salary_records, employees RESTART IDENTITY")
             people = seeding.generate(options["employees"], options["seed"], options["as_of"])
-            self.insert(people)
+            records = self.insert(people)
         with connection.cursor() as cursor:
-            cursor.execute("ANALYZE employees")  # planner stats after a bulk load
+            cursor.execute("ANALYZE employees, salary_records")  # planner stats after a bulk load
         self.stdout.write(
             self.style.SUCCESS(
-                f"Seeded {len(people):,} employees in {time.perf_counter() - started:.1f}s."
+                f"Seeded {len(people):,} employees and {records:,} salary records "
+                f"in {time.perf_counter() - started:.1f}s."
             )
         )
 
-    def insert(self, people: list[seeding.SeedEmployee]) -> None:
+    def insert(self, people: list[seeding.SeedEmployee]) -> int:
         departments = dict(Department.objects.values_list("name", "pk"))
         countries = set(Country.objects.values_list("code", flat=True))
         missing = {person.country for person in people} - countries
         missing |= {person.department for person in people} - set(departments)
         if missing:
             raise CommandError(f"Unknown reference data {sorted(missing)}: run the migrations.")
-        Employee.objects.bulk_create(
+        employees = Employee.objects.bulk_create(
             [
                 Employee(
                     employee_code=person.code,
@@ -69,11 +71,22 @@ class Command(BaseCommand):
                     department_id=departments[person.department],
                     job_title=person.job_title,
                     hire_date=person.hire_date,
-                    salary=person.salary,
-                    currency_id=person.currency,
                     search_text=fold(f"{person.full_name} {person.code}"),
                 )
                 for person in people
             ],
             batch_size=2000,
         )
+        records = [
+            SalaryRecord(
+                employee_id=employee.pk,
+                effective_date=entry.effective_date,
+                amount=entry.amount,
+                currency_id=entry.currency,
+                reason=entry.reason.value,
+            )
+            for employee, person in zip(employees, people, strict=True)
+            for entry in person.salaries
+        ]
+        SalaryRecord.objects.bulk_create(records, batch_size=5000)
+        return len(records)

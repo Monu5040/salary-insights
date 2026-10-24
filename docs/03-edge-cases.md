@@ -65,6 +65,35 @@ How each case is handled and where it is tested. **U** domain unit · **I** API 
 | 34 | Insecure production settings (`DEBUG`, HSTS, cookies) | `check --deploy --fail-level WARNING` fails CI and the deploy | — |
 | 35 | The app isn't built when Django serves its page | A plain 404 saying how to build it; unknown API and static addresses stay 404s instead of returning the app | I |
 
+## Salary history
+| # | Case | Behavior | Test |
+|---|---|---|---|
+| 41 | A salary change dated before the hire date | Refused, naming the hire date. A sheet's first salary dated earlier starts on the hire date instead | I |
+| 42 | A future-dated change (a raise agreed for next April) | Stored and shown as scheduled; it becomes the current salary on its date with no job, because the salary on a day is derived | I, U |
+| 43 | Two changes on the same day | 409 pointing at the existing change, to correct it instead; also a database constraint | I |
+| 44 | A back-dated change between existing ones | The history re-orders and both neighbours' raise % is worked out again on read; insights on any date use the salaries in force then | I |
+| 45 | Moving, re-labelling or removing the starting salary | Refused: it stays a hire on the hire date. Its amount can be corrected, and changing the hire date moves it, never past the next change | I |
+
+## Import and export
+| # | Case | Behavior | Test |
+|---|---|---|---|
+| 46 | A file that is too big, an Excel workbook, or not UTF-8 | Refused before any row is read, saying what to do (Save As, then CSV UTF-8); limits are settings | U, I |
+| 47 | Someone changes an employee between preview and apply | Apply locks the employees in the file, plans again and compares fingerprints: a different plan is a 409 with a fresh preview, and nothing is applied | I |
+| 48 | Importing the same file twice, or an exported sheet | Nothing to change: the export writes the import's columns | I |
+| 49 | An exported cell starting with `=`, `+`, `-` or `@` | Prefixed with `'`, so Excel never runs it as a formula; importing removes the `'` again | U, I |
+| 50 | Non-Latin names garbled when Excel opens the export | Written as UTF-8 with a byte-order mark | U, I |
+| 55 | Ambiguous dates in a file (03/04/2026) | Never guessed: ISO dates always work, others only in the format the uploader picks | U, I |
+| 56 | A file with some bad rows | Every row error is listed with its line and column, and nothing is applied until the file is clean: the whole file or none of it | U, I |
+| 57 | Semicolons, tabs, header variants ("Emp Code"), the same employee twice | Delimiters detected, headers matched without case or punctuation, every duplicate row flagged | U |
+
+## Pay equity and questions
+| # | Case | Behavior | Test |
+|---|---|---|---|
+| 51 | Too few people in the same role to judge | Nobody is flagged unless their peer group (same job title, in their country when there are enough, else everywhere) has at least `MIN_GROUP_SIZE` people | I |
+| 52 | A question the explorer can't answer, or a reply outside its allow-lists | 422 saying what can be asked; the model's reply goes through the explorer's own query serializer, so it never reaches the SQL | I |
+| 53 | No Groq key, or Groq is down or answers nonsense | 503 with a plain message; every other screen works as before | U, I |
+| 54 | One address asking many questions on the open demo | Throttled per address (10 a minute by default) with a 429, so nobody can run up the Groq bill | — |
+
 ## Screens
 | # | Case | Behavior | Test |
 |---|---|---|---|

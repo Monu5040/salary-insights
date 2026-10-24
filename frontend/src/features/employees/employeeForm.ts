@@ -1,7 +1,7 @@
 import type { Employee, EmployeeInput } from "../../api/employees";
 
-/** The details form: everything but the salary, which has its own form on the record. */
-export type DetailsValues = Omit<EmployeeInput, "salary" | "currency">;
+/** The details form: everything but the salary, which has its own history on the record. */
+export type DetailsValues = EmployeeInput;
 
 /** A record as the edit form starts from it. */
 export const formValues = (employee: Employee): DetailsValues => ({

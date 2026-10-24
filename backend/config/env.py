@@ -1,6 +1,7 @@
 """Read settings from environment variables, failing loudly on values that don't parse."""
 
 import os
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -46,3 +47,15 @@ def env_list(name: str, default: list[str] | None = None) -> list[str]:
     if value is None:
         return list(default or [])
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def env_decimal_pair(name: str, default: str) -> tuple[Decimal, Decimal]:
+    """Two decimals written as "low,high", for example "0.80,1.20"."""
+    value = os.environ.get(name, default)
+    parts = [part.strip() for part in value.split(",")]
+    if len(parts) == 2:
+        try:
+            return Decimal(parts[0]), Decimal(parts[1])
+        except InvalidOperation:
+            pass
+    raise ImproperlyConfigured(f'{name} must be two numbers like "0.80,1.20", got {value!r}.')

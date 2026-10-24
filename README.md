@@ -1,6 +1,6 @@
 # Salary Insights
 
-Salary management for ACME's HR team: 10,000 employees across several countries, moved off spreadsheets into a web app where the HR Manager keeps salaries correct and answers pay questions in seconds.
+Salary management for ACME's HR team: 10,000 employees across several countries, moved off spreadsheets into a web app where the HR Manager keeps salary history correct and answers pay questions in seconds: from the dashboard, the explorer, or a question typed in plain English. Sheets come in and go out as CSV.
 
 Django 5.2 + DRF · React + TypeScript + Ant Design · PostgreSQL.
 
@@ -12,16 +12,16 @@ You need Docker (for PostgreSQL), [uv](https://docs.astral.sh/uv/) and Node 22.
 
 ```bash
 make install   # backend, frontend and browser-test dependencies
-make seed      # 10,000 demo employees with their salaries
+make seed      # 10,000 demo employees with salary history
 make dev       # database, API and UI together
 ```
 
-Open **http://localhost:5180**. Ctrl+C stops the servers.
+Open **http://localhost:5180**. Ctrl+C stops the servers. To try questions in plain English locally, set `GROQ_API_KEY` (from console.groq.com) before `make dev`; without it the question box says it isn't set up and everything else works.
 
 | Command | What it does |
 |---|---|
 | `make dev` | Starts PostgreSQL in Docker, applies migrations, runs the API (port 8100) and the UI (port 5180) |
-| `make seed` | Loads 10,000 deterministic demo employees, replacing earlier demo data |
+| `make seed` | Loads 10,000 deterministic demo employees with salary history, replacing earlier demo data |
 | `make test` | Backend tests (pytest, with a coverage gate) and frontend tests (Vitest) |
 | `make lint` | ruff, strict mypy, import boundaries, ESLint and TypeScript |
 | `make e2e` | Browser tests (Playwright, Chromium) against the built app, on a database of their own: the main flows and an accessibility check of every page |
@@ -35,7 +35,7 @@ The ports are project-specific, so this runs alongside other local apps on 5173 
 
 One Ubuntu VM, set up once with [`deploy/setup-vm.sh`](deploy/setup-vm.sh): PostgreSQL, gunicorn under systemd, a nightly reset timer, and a Cloudflare tunnel for the public HTTPS address. Every green push to `main` runs [`deploy/deploy.sh`](deploy/deploy.sh) from CI. It builds the frontend, uploads a new release, migrates, switches over, restarts and checks the public address. Design §10 has the details.
 
-CI needs two repository secrets: `DEPLOY_SSH_KEY` (the deploy user's private key) and `DEPLOY_KNOWN_HOSTS` (the VM's host key line).
+CI needs two repository secrets: `DEPLOY_SSH_KEY` (the deploy user's private key) and `DEPLOY_KNOWN_HOSTS` (the VM's host key line). The Groq key lives only on the VM, as `GROQ_API_KEY` in `/opt/acme-salary/.env`.
 
 ## How it was designed
 

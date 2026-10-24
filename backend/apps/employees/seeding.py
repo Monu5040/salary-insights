@@ -1,11 +1,13 @@
-"""Deterministic demo data: employees with realistic current salaries (design §12).
+"""Deterministic demo data: employees with realistic salary history (design §12).
 
-A salary is a base for the seniority x a department factor x a country factor x log-normal
-noise, converted to local currency at the fixed rates and rounded to a sensible step per
-currency. Seniority only shapes the job title and the pay: levels aren't stored. The same seed
-gives identical data on every run.
+Today's salary is a base for the seniority x a department factor x a country factor x
+log-normal noise, converted to local currency at the fixed rates. The history leads up to it:
+a starting salary on the hire date, then raises most years on 1 April, and for a few people a
+raise already agreed for next April. Amounts are rounded to a sensible step per currency.
+Seniority only shapes the job title and the pay: levels aren't stored. The same seed gives
+identical data on every run.
 
-About 1% of people are planted far from their peers, so the peer comparison has something to find.
+About 1% of people are planted far from their peers, so pay equity has something to find.
 """
 
 import math
@@ -18,6 +20,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from faker import Faker
 
 from domain.fx import Rates
+from domain.stats import Reason
 
 
 @dataclass(frozen=True)
@@ -107,6 +110,14 @@ FAMILY_NAME_FIRST = {"ja_JP"}
 
 
 @dataclass(frozen=True)
+class SeedSalary:
+    effective_date: date
+    amount: Decimal
+    currency: str
+    reason: Reason
+
+
+@dataclass(frozen=True)
 class SeedEmployee:
     code: str
     full_name: str
@@ -115,8 +126,7 @@ class SeedEmployee:
     department: str
     job_title: str
     hire_date: date
-    salary: Decimal
-    currency: str
+    salaries: list[SeedSalary]
 
 
 def generate(count: int, seed: int, as_of: date) -> list[SeedEmployee]:
@@ -146,7 +156,7 @@ class _Generator:
         department = self.pick({key: value[0] for key, value in DEPARTMENTS.items()})
         level = self.pick({key: value[0] for key, value in LEVELS.items()})
         role = DEPARTMENTS[department][1]
-        currency = COUNTRIES[country].currency
+        hire_date = self.hire_date()
         return SeedEmployee(
             code=code,
             full_name=self.name(COUNTRIES[country].locale),
@@ -154,9 +164,8 @@ class _Generator:
             country=country,
             department=department,
             job_title=TITLE_PATTERNS[level].format(role=role, department=department),
-            hire_date=self.hire_date(),
-            salary=self.salary(country, department, level),
-            currency=currency,
+            hire_date=hire_date,
+            salaries=self.history(country, department, level, hire_date),
         )
 
     def name(self, locale: str) -> str:
@@ -169,13 +178,48 @@ class _Generator:
         span = (self.as_of - FIRST_HIRE).days - 30
         return FIRST_HIRE + timedelta(days=int(self.rng.triangular(0, span, span)))
 
-    def salary(self, country: str, department: str, level: str) -> Decimal:
+    def history(self, country: str, department: str, level: str, hire: date) -> list[SeedSalary]:
+        """Raises on 1 April of most years since the hire, the last five at most, leading up
+        to today's salary; sometimes a raise already agreed for next April."""
+        raise_dates = [
+            day
+            for day in (date(year, 4, 1) for year in range(hire.year, self.as_of.year + 1))
+            if hire < day <= self.as_of and self.rng.random() > 0.15
+        ][-5:]
+        reasons = [self.raise_reason() for _ in raise_dates]
+        percents = [self.raise_percent(reason) for reason in reasons]
+
         usd = Decimal(LEVELS[level][1]) * DEPARTMENTS[department][2] * self.noise()
         if self.rng.random() < 0.01:  # planted outlier
             usd *= self.rng.choice([Decimal("0.65"), Decimal("1.45")])
         profile = COUNTRIES[country]
-        local = usd * profile.pay_factor / self.rates.usd_per_unit(profile.currency)
-        return self.round(local, profile.currency)
+        today = usd * profile.pay_factor / self.rates.usd_per_unit(profile.currency)
+        amount = today / math.prod((1 + p for p in percents), start=Decimal(1))
+
+        currency = profile.currency
+        salaries = [SeedSalary(hire, self.round(amount, currency), currency, Reason.HIRE)]
+        for day, reason, percent in zip(raise_dates, reasons, percents, strict=True):
+            amount = salaries[-1].amount * (1 + percent)
+            salaries.append(SeedSalary(day, self.round(amount, currency), currency, reason))
+        if self.rng.random() < 0.05:  # a future-dated raise (edge case #42)
+            amount = salaries[-1].amount * Decimal("1.05")
+            agreed = date(self.as_of.year + 1, 4, 1)
+            salaries.append(
+                SeedSalary(agreed, self.round(amount, currency), currency, Reason.MERIT)
+            )
+        return salaries
+
+    def raise_reason(self) -> Reason:
+        roll = self.rng.random()
+        if roll < 0.15:
+            return Reason.PROMOTION
+        if roll < 0.22:
+            return Reason.MARKET
+        return Reason.MERIT
+
+    def raise_percent(self, reason: Reason) -> Decimal:
+        low, high = {Reason.PROMOTION: (10, 18), Reason.MARKET: (5, 10)}.get(reason, (3, 8))
+        return Decimal(self.rng.randint(low * 10, high * 10)) / 1000
 
     def noise(self) -> Decimal:
         return Decimal(str(round(math.exp(self.rng.gauss(0, 0.12)), 4)))

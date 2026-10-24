@@ -1,6 +1,7 @@
 import { Card, Flex, Tag, theme, Typography } from "antd";
 
 import type { Employee, PeerPosition } from "../../api/employees";
+import { HttpError } from "../../api/http";
 import { ErrorAlert } from "../../components/ErrorAlert";
 import { Facts } from "../../components/Facts";
 import { CardTitle } from "../../components/Titles";
@@ -23,7 +24,13 @@ export function PeersCard({ employee }: { employee: Employee }) {
       style={{ marginBottom: 16 }}
       loading={peers.isPending}
     >
-      {peers.error && <ErrorAlert error={peers.error} onRetry={() => void peers.refetch()} />}
+      {peers.error &&
+        (peers.error instanceof HttpError && peers.error.status === 404 ? (
+          // Someone whose first salary starts later has nothing to compare yet.
+          <Typography.Text type="secondary">{peers.error.message}</Typography.Text>
+        ) : (
+          <ErrorAlert error={peers.error} onRetry={() => void peers.refetch()} />
+        ))}
       {position && (
         <>
           <Typography.Paragraph style={{ marginBottom: 8 }}>

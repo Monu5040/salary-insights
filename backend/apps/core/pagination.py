@@ -32,5 +32,11 @@ def page_of[ModelT: Model](
     return count, list(queryset[start : start + page_size]) if start < count else []
 
 
+def page_of_list[T](rows: list[T], page: int, page_size: int) -> tuple[int, list[T]]:
+    """The same, for rows already in memory."""
+    start = (page - 1) * page_size
+    return len(rows), rows[start : start + page_size]
+
+
 def paged_response(count: int, page: int, page_size: int, results: Any) -> Response:
     return Response({"count": count, "page": page, "page_size": page_size, "results": results})

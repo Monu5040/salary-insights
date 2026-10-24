@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router";
 
 /** What every insight on the page is relative to, kept in the page address (design §8). */
-export const SCOPE_PARAMS = ["currency", "country", "department"] as const;
+export const SCOPE_PARAMS = ["as_of", "currency", "country", "department"] as const;
 
 export type Changes = Record<string, string | string[] | undefined>;
 

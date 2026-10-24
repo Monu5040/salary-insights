@@ -1,7 +1,7 @@
 import { Alert, Button, Card, Form } from "antd";
 import { Link, useNavigate } from "react-router";
 
-import type { EmployeeInput } from "../../api/employees";
+import type { NewEmployeeInput } from "../../api/employees";
 import { HttpError } from "../../api/http";
 import { ErrorAlert } from "../../components/ErrorAlert";
 import { PageHeader } from "../../components/PageHeader";
@@ -11,13 +11,13 @@ import { EmployeeFields } from "./EmployeeFields";
 import { useCreateEmployee } from "./queries";
 
 export function NewEmployeePage() {
-  const [form] = Form.useForm<EmployeeInput>();
+  const [form] = Form.useForm<NewEmployeeInput>();
   const create = useCreateEmployee();
   const navigate = useNavigate();
   const countries = useCountries().data ?? [];
   const problem = create.error instanceof HttpError ? create.error.problem : undefined;
 
-  function save(values: EmployeeInput) {
+  function save(values: NewEmployeeInput) {
     create.mutate(values, {
       onSuccess: (employee) => void navigate(`/employees/${employee.id}`),
       onError: (error) => showFieldErrors(form, error),
@@ -48,11 +48,11 @@ export function NewEmployeePage() {
           ) : (
             <ErrorAlert error={create.error} />
           ))}
-        <Form<EmployeeInput>
+        <Form<NewEmployeeInput>
           form={form}
           layout="vertical"
           onFinish={save}
-          onValuesChange={(changed: Partial<EmployeeInput>) => {
+          onValuesChange={(changed: Partial<NewEmployeeInput>) => {
             // Until someone picks a currency, use the new country's usual one.
             const country = countries.find((row) => row.code === changed.country);
             if (country && !form.isFieldTouched("currency")) {

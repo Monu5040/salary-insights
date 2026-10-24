@@ -10,6 +10,7 @@ const PAGES = [
   { name: "Employees", path: "/employees", ready: /^[\d,]+ employees$/ },
   { name: "An employee", path: "/employees/2", ready: "Among peers" },
   { name: "Add an employee", path: "/employees/new", ready: "Annual base salary" },
+  { name: "Import", path: "/import", ready: "Click or drag a CSV file here" },
 ];
 
 /**
@@ -59,6 +60,18 @@ for (const { name, path, ready } of PAGES) {
   });
 }
 
+test("an import's preview is accessible", async ({ page }) => {
+  const sheet = await page.request.get("/api/v1/exports/employees.csv?q=E00040");
+  await page.goto("/import");
+  await page
+    .locator("input[type=file]")
+    .setInputFiles({ name: "one.csv", mimeType: "text/csv", buffer: await sheet.body() });
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(page.getByRole("heading", { name: "What one.csv changes" })).toBeVisible();
+
+  expect(await violations(page)).toEqual([]);
+});
+
 test("required fields say so to screen readers, lists included", async ({ page }) => {
   await page.goto("/employees/new");
 
@@ -72,10 +85,17 @@ test("the dialogs for changing someone are accessible", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Among peers" })).toBeVisible();
   const name = await page.getByRole("heading", { level: 1 }).textContent();
 
-  await page.getByRole("button", { name: "Change salary" }).click();
-  await expect(page.getByRole("dialog", { name: "Change salary" })).toBeVisible();
+  await page.getByRole("button", { name: "Record a change" }).click();
+  await expect(page.getByRole("dialog", { name: "Record a salary change" })).toBeVisible();
   expect(await violations(page)).toEqual([]);
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+
+  await page.getByRole("button", { name: "Correct" }).first().click();
+  await expect(page.getByRole("dialog", { name: "Correct a salary change" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   await page.getByRole("button", { name: "Edit details" }).click();
   await expect(page.getByRole("dialog", { name: `Edit ${name}'s details` })).toBeVisible();

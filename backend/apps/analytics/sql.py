@@ -1,6 +1,7 @@
 """The query every insight builds on (design §3), and the pieces the explorer may combine.
 
-Each employee with their salary converted into the chosen currency at the fixed rates.
+Each employee hired by a date, with the salary in force that day, converted into the chosen
+currency at the fixed rates.
 Values are always bound parameters; SQL text is only ever put together from the constants
 in this module (CLAUDE.md, SQL).
 """
@@ -20,25 +21,31 @@ class Filters:
 
 
 _BASE = """
-WITH base AS (
-    SELECT e.id, e.country_id, c.name AS country_name,
+WITH current_salary AS (
+    SELECT DISTINCT ON (employee_id) employee_id, amount, currency_id
+    FROM salary_records
+    WHERE effective_date <= %(as_of)s
+    ORDER BY employee_id, effective_date DESC
+), base AS (
+    SELECT e.id, e.employee_code, e.full_name, e.country_id, c.name AS country_name,
            e.department_id, d.name AS department_name,
            e.job_title, e.hire_date,
-           e.salary * cur.usd_per_unit / %(target_rate)s AS pay
+           cs.amount * cur.usd_per_unit / %(target_rate)s AS pay
     FROM employees e
     JOIN countries c ON c.code = e.country_id
     JOIN departments d ON d.id = e.department_id
-    JOIN currencies cur ON cur.code = e.currency_id
-    WHERE TRUE
+    JOIN current_salary cs ON cs.employee_id = e.id
+    JOIN currencies cur ON cur.code = cs.currency_id
+    WHERE e.hire_date <= %(as_of)s
       {filters}
 )
 """
 
 
-def base(today: date, target_rate: Decimal, filters: Filters) -> tuple[str, dict[str, Any]]:
+def base(as_of: date, target_rate: Decimal, filters: Filters) -> tuple[str, dict[str, Any]]:
     """The `base` CTE, ready for a SELECT to be appended, and its parameters."""
     clauses: list[str] = []
-    params: dict[str, Any] = {"today": today, "target_rate": target_rate}
+    params: dict[str, Any] = {"as_of": as_of, "target_rate": target_rate}
     if filters.countries:
         clauses.append("AND e.country_id = ANY(%(countries)s)")
         params["countries"] = list(filters.countries)
@@ -55,7 +62,7 @@ class Dimension:
     order: str  # how the groups are sorted
 
 
-_YEARS = "date_part('year', age(%(today)s::date, hire_date))"
+_YEARS = "date_part('year', age(%(as_of)s::date, hire_date))"
 _TENURE = (
     f"CASE WHEN {_YEARS} < 1 THEN 'Under 1 year' WHEN {_YEARS} < 3 THEN '1 to 2 years' "
     f"WHEN {_YEARS} < 5 THEN '3 to 4 years' WHEN {_YEARS} < 10 THEN '5 to 9 years' "

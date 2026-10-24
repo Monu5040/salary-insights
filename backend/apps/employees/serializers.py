@@ -1,5 +1,6 @@
 from typing import Any
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.core.pagination import PageQuery
@@ -45,12 +46,14 @@ class AmountField(serializers.CharField):
 
 
 class EmployeeRowSerializer(serializers.ModelSerializer[Employee]):
-    """One row of the directory, with the salary at its currency's decimals."""
+    """One row of the directory, with the salary in force today at its currency's decimals.
+
+    Needs the rows from selectors.employees(), which adds that salary."""
 
     country = CountryRef(read_only=True)
     department = DepartmentRef(read_only=True)
     salary = serializers.SerializerMethodField()
-    currency = serializers.CharField(source="currency_id", read_only=True)
+    currency = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
@@ -66,8 +69,16 @@ class EmployeeRowSerializer(serializers.ModelSerializer[Employee]):
             "currency",
         ]
 
-    def get_salary(self, employee: Employee) -> str:
-        return money_text(employee.salary, employee.currency.minor_units)
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_salary(self, employee: Employee) -> str | None:
+        amount = getattr(employee, "salary_amount", None)
+        if amount is None:
+            return None  # only before their first salary takes effect
+        return money_text(amount, employee.salary_minor_units)  # type: ignore[attr-defined]
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_currency(self, employee: Employee) -> str | None:
+        return getattr(employee, "salary_currency", None)
 
 
 class EmployeeSerializer(EmployeeRowSerializer):
@@ -93,8 +104,6 @@ class EmployeeWriteSerializer(serializers.ModelSerializer[Employee]):
     employee_code = serializers.CharField(max_length=40)
     country = serializers.SlugRelatedField(slug_field="code", queryset=Country.objects.all())
     department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all())
-    salary = AmountField(max_length=40, help_text="Annual gross base salary, as a string")
-    currency = serializers.SlugRelatedField(slug_field="code", queryset=Currency.objects.all())
 
     class Meta:
         model = Employee
@@ -106,8 +115,6 @@ class EmployeeWriteSerializer(serializers.ModelSerializer[Employee]):
             "department",
             "job_title",
             "hire_date",
-            "salary",
-            "currency",
         ]
         # Uniqueness is left to the database, and a clash is a 409 naming the field (#10).
         validators: list[Any] = []
@@ -121,19 +128,24 @@ class EmployeeWriteSerializer(serializers.ModelSerializer[Employee]):
     def validate_full_name(self, value: str) -> str:
         return clean_name(value)
 
-    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        """The salary must fit its currency: its decimals and its typo ceiling (#7, #8).
 
-        An edit may send only one of the two, so the other comes from the record."""
-        if "salary" not in attrs and "currency" not in attrs:
-            return attrs
-        current = self.instance
-        currency: Currency = attrs.get("currency") or current.currency  # type: ignore[union-attr]
-        raw = attrs.get("salary")
-        if raw is None:
-            raw = money_text(current.salary, current.currency.minor_units)  # type: ignore[union-attr]
+class NewEmployeeSerializer(EmployeeWriteSerializer):
+    """A new employee with their starting salary, effective on the hire date. Later changes
+    go through the salary history."""
+
+    salary = AmountField(max_length=40, help_text="Annual gross base salary, as a string")
+    currency = serializers.SlugRelatedField(slug_field="code", queryset=Currency.objects.all())
+
+    class Meta(EmployeeWriteSerializer.Meta):
+        fields = [*EmployeeWriteSerializer.Meta.fields, "salary", "currency"]
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """The salary must fit its currency: its decimals and its typo ceiling (#2, #7)."""
+        currency: Currency = attrs["currency"]
         try:
-            attrs["salary"] = parse_amount(raw, currency.minor_units, currency.salary_ceiling)
+            attrs["salary"] = parse_amount(
+                attrs["salary"], currency.minor_units, currency.salary_ceiling
+            )
         except InvalidAmount as error:
             raise serializers.ValidationError({"salary": [str(error)]}) from None
         return attrs

@@ -1,5 +1,6 @@
 """Statistics behind the insights (design §4; edge cases #22, #24)."""
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -8,13 +9,21 @@ from hypothesis import strategies as st
 
 from domain.stats import (
     PeerGroup,
+    Reason,
+    SalaryChange,
     choose_peer_group,
     compa_ratio,
+    is_currency_change,
+    is_outlier,
     median,
     percentile,
+    percentile_excluding,
     percentile_rank,
+    raise_percent_between,
     salary_range,
 )
+
+BAND = (Decimal("0.80"), Decimal("1.20"))
 
 
 def decimals(*values: int | str) -> list[Decimal]:
@@ -97,6 +106,24 @@ class TestPeerPosition:
         assert compa_ratio(Decimal(110000), None) is None
 
 
+class TestOutliers:
+    @pytest.mark.parametrize(
+        ("ratio", "expected"), [("0.79", True), ("1.21", True), ("1.0", False)]
+    )
+    def test_outside_the_band_is_an_outlier(self, ratio: str, expected: bool) -> None:
+        assert is_outlier(Decimal(ratio), BAND, peer_count=5, min_group_size=5) is expected
+
+    @pytest.mark.parametrize("ratio", ["0.80", "1.20"])
+    def test_the_band_edges_are_inside(self, ratio: str) -> None:
+        assert is_outlier(Decimal(ratio), BAND, peer_count=5, min_group_size=5) is False
+
+    def test_a_small_peer_group_never_makes_an_outlier(self) -> None:
+        assert is_outlier(Decimal("0.5"), BAND, peer_count=4, min_group_size=5) is False
+
+    def test_no_ratio_is_not_an_outlier(self) -> None:
+        assert is_outlier(None, BAND, peer_count=10, min_group_size=5) is False
+
+
 class TestPeerGroup:
     TITLE = PeerGroup("country + level + job title", size=3)
     DEPARTMENT = PeerGroup("country + level + department", size=7)
@@ -117,3 +144,55 @@ class TestPeerGroup:
     def test_needs_at_least_one_definition(self) -> None:
         with pytest.raises(ValueError, match="at least one"):
             choose_peer_group([], min_group_size=5)
+
+
+def change(amount: int, currency: str = "INR", reason: Reason = Reason.MERIT) -> SalaryChange:
+    return SalaryChange(date(2026, 4, 1), Decimal(amount), currency, reason)
+
+
+class TestRaisePercent:
+    def test_is_the_change_against_the_previous_record(self) -> None:
+        assert raise_percent_between(change(1_800_000), change(1_926_000)) == 7
+
+    @pytest.mark.parametrize("reason", [Reason.HIRE, Reason.CORRECTION])
+    def test_hire_and_correction_records_are_not_raises(self, reason: Reason) -> None:
+        assert raise_percent_between(change(100), change(110, reason=reason)) is None
+
+    def test_a_currency_change_is_not_a_raise_and_is_counted_separately(self) -> None:
+        before, after = change(1_800_000, "INR"), change(30_000, "USD", Reason.TRANSFER)
+
+        assert raise_percent_between(before, after) is None
+        assert is_currency_change(before, after) is True
+
+    def test_the_first_record_has_no_raise(self) -> None:
+        assert raise_percent_between(None, change(100, reason=Reason.HIRE)) is None
+
+
+class TestPercentileExcluding:
+    """Each employee's peers are their group without them (design §4 Peer position)."""
+
+    def test_leaves_out_one_value(self) -> None:
+        ordered = decimals(20, 25, 25, 30, 35)
+        # Without the 35, the peers are 20, 25, 25, 30: median 25.
+        assert percentile_excluding(ordered, 4, Decimal("0.5")) == 25
+        # Without the 20: 25, 25, 30, 35, median 27.5.
+        assert percentile_excluding(ordered, 0, Decimal("0.5")) == Decimal("27.5")
+
+    def test_a_group_of_one_has_no_peers(self) -> None:
+        assert percentile_excluding(decimals(20), 0, Decimal("0.5")) is None
+
+    @given(
+        st.lists(st.integers(min_value=1, max_value=10**9), min_size=2, max_size=40),
+        st.data(),
+        st.sampled_from(["0", "0.1", "0.25", "0.5", "0.75", "0.9", "1"]),
+    )
+    def test_matches_the_percentile_of_the_list_without_it(
+        self, values: list[int], data: st.DataObject, fraction: str
+    ) -> None:
+        ordered = sorted(Decimal(value) for value in values)
+        skip = data.draw(st.integers(min_value=0, max_value=len(ordered) - 1))
+        without = ordered[:skip] + ordered[skip + 1 :]
+
+        assert percentile_excluding(ordered, skip, Decimal(fraction)) == percentile(
+            without, Decimal(fraction)
+        )

@@ -20,7 +20,6 @@ export function Explorer({ scope }: { scope: string }) {
   const metrics = (chosen.length ? chosen : ["median"]) as Metric[];
   const by = (params.has("by") ? params.getAll("by") : ["country"]).filter(Boolean) as Dimension[];
   const answer = useExplore(withScope(scope, { metric: metrics, by }));
-  const { money } = useCurrency(answer.data?.currency ?? "USD");
 
   function choose(key: "metric" | "by", values: string[]) {
     const next = new URLSearchParams(params);
@@ -35,7 +34,7 @@ export function Explorer({ scope }: { scope: string }) {
   }));
 
   return (
-    <Card title={<CardTitle>Explore</CardTitle>}>
+    <Card id="explorer" title={<CardTitle>Explore</CardTitle>}>
       <Flex gap={8} wrap style={{ marginBottom: 16 }}>
         <Select
           mode="multiple"
@@ -65,42 +64,64 @@ export function Explorer({ scope }: { scope: string }) {
         />
       </Flex>
       {answer.error && <ErrorAlert error={answer.error} onRetry={() => void answer.refetch()} />}
-      <Table<Group>
-        size="small"
+      <GroupsTable
+        groups={answer.data?.groups}
+        currency={answer.data?.currency ?? "USD"}
+        metrics={metrics}
+        by={by}
         loading={answer.isFetching}
-        rowKey={(group) => JSON.stringify(group.keys)}
-        dataSource={answer.data?.groups}
-        scroll={{ x: true }}
-        pagination={{ pageSize: 20, hideOnSinglePage: true }}
-        columns={[
-          ...by.map((name) => ({
-            key: name,
-            title: DIMENSIONS[name],
-            render: (_: unknown, group: Group) => group.labels[name],
-          })),
-          {
-            key: "n",
-            title: "People",
-            align: "right" as const,
-            render: (_: unknown, group: Group) => (
-              <>
-                {group.headcount.toLocaleString("en")}
-                {group.low_sample && (
-                  <Tag bordered={false} style={{ marginLeft: 6 }}>
-                    Under 5
-                  </Tag>
-                )}
-              </>
-            ),
-          },
-          ...metrics.map((metric) => ({
-            key: metric,
-            title: METRICS[metric],
-            align: "right" as const,
-            render: (_: unknown, group: Group) => showValue(metric, group.values[metric], money),
-          })),
-        ]}
       />
     </Card>
+  );
+}
+
+type TableProps = {
+  groups: Group[] | undefined;
+  currency: string;
+  metrics: Metric[];
+  by: Dimension[];
+  loading?: boolean;
+};
+
+/** An explorer answer as a table: a row per group, a column per measure. */
+export function GroupsTable({ groups, currency, metrics, by, loading = false }: TableProps) {
+  const { money } = useCurrency(currency);
+  return (
+    <Table<Group>
+      size="small"
+      loading={loading}
+      rowKey={(group) => JSON.stringify(group.keys)}
+      dataSource={groups}
+      scroll={{ x: true }}
+      pagination={{ pageSize: 20, hideOnSinglePage: true }}
+      columns={[
+        ...by.map((name) => ({
+          key: name,
+          title: DIMENSIONS[name],
+          render: (_: unknown, group: Group) => group.labels[name],
+        })),
+        {
+          key: "n",
+          title: "People",
+          align: "right" as const,
+          render: (_: unknown, group: Group) => (
+            <>
+              {group.headcount.toLocaleString("en")}
+              {group.low_sample && (
+                <Tag bordered={false} style={{ marginLeft: 6 }}>
+                  Under 5
+                </Tag>
+              )}
+            </>
+          ),
+        },
+        ...metrics.map((metric) => ({
+          key: metric,
+          title: METRICS[metric],
+          align: "right" as const,
+          render: (_: unknown, group: Group) => showValue(metric, group.values[metric], money),
+        })),
+      ]}
+    />
   );
 }

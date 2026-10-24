@@ -12,11 +12,13 @@ from rest_framework import serializers
 
 from apps.analytics.selectors import PeerPosition
 from apps.analytics.sql import DIMENSIONS, METRICS
+from apps.core.pagination import PageQuery
 from apps.core.query import StrictQuery
 from domain.money import money_text
 
 
 class InsightQuery(StrictQuery):
+    as_of = serializers.DateField(required=False, help_text="Defaults to today")
     currency = serializers.RegexField(
         r"^[A-Z]{3}$", required=False, help_text="Defaults to the reporting currency"
     )
@@ -38,9 +40,18 @@ class ExploreQuery(InsightQuery):
         return value
 
 
+class EquityQuery(InsightQuery, PageQuery):
+    pass
+
+
+class QuestionSerializer(serializers.Serializer[Any]):
+    question = serializers.CharField(max_length=300, help_text="In plain English")
+
+
 class AnswerSerializer(serializers.Serializer[Any]):
     """What every number in an answer is relative to (design §4)."""
 
+    as_of = serializers.DateField()
     currency = serializers.CharField()
     fx_basis = serializers.CharField()
 
@@ -64,6 +75,36 @@ class ExploreSerializer(AnswerSerializer):
     metrics = serializers.ListField(child=serializers.CharField())
     by = serializers.ListField(child=serializers.CharField())
     groups = GroupSerializer(many=True)
+
+
+class OutlierSerializer(serializers.Serializer[Any]):
+    id = serializers.IntegerField()
+    employee_code = serializers.CharField()
+    full_name = serializers.CharField()
+    country_name = serializers.CharField()
+    job_title = serializers.CharField()
+    pay = serializers.CharField()
+    peer_median = serializers.CharField()
+    compa_ratio = serializers.CharField(help_text="Pay divided by the peer median")
+    definition = serializers.CharField(help_text="The peer group used")
+    peers = serializers.IntegerField()
+
+
+class EquitySerializer(AnswerSerializer):
+    """People paid far from others with the same job title (design §4 Pay equity)."""
+
+    band = serializers.ListField(child=serializers.CharField(), help_text="Compa-ratio low, high")
+    count = serializers.IntegerField()
+    page = serializers.IntegerField()
+    page_size = serializers.IntegerField()
+    results = OutlierSerializer(many=True)
+
+
+class AskSerializer(serializers.Serializer[Any]):
+    question = serializers.CharField()
+    summary = serializers.CharField(help_text="What the question was read as")
+    query = serializers.DictField(help_text="The explorer parameters it became")
+    answer = ExploreSerializer()
 
 
 class PresetSerializer(serializers.Serializer[Any]):

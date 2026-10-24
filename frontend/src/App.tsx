@@ -1,4 +1,4 @@
-import { BarChartOutlined, TeamOutlined } from "@ant-design/icons";
+import { BarChartOutlined, CloudUploadOutlined, TeamOutlined } from "@ant-design/icons";
 import { Flex, Layout, Menu } from "antd";
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
 
@@ -9,12 +9,14 @@ import { NotFound } from "./components/NotFound";
 import { EmployeePage } from "./features/employees/EmployeePage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { NewEmployeePage } from "./features/employees/NewEmployeePage";
+import { ImportPage } from "./features/imports/ImportPage";
 import { InsightsPage } from "./features/insights/InsightsPage";
 
 // Icons are decoration beside their words, so screen readers skip them.
 const SECTIONS = [
   { key: "/insights", label: "Insights", icon: <BarChartOutlined aria-hidden /> },
   { key: "/employees", label: "Employees", icon: <TeamOutlined aria-hidden /> },
+  { key: "/import", label: "Import", icon: <CloudUploadOutlined aria-hidden /> },
 ];
 
 export function App() {
@@ -26,6 +28,7 @@ export function App() {
         <Route path="/employees" element={<EmployeesPage />} />
         <Route path="/employees/new" element={<NewEmployeePage />} />
         <Route path="/employees/:id" element={<EmployeePage />} />
+        <Route path="/import" element={<ImportPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

@@ -13,10 +13,10 @@ describe("App shell", () => {
     renderApp("/");
 
     expect(await screen.findByRole("heading", { name: "Insights" })).toBeInTheDocument();
-    for (const name of ["Insights", "Employees"]) {
+    for (const name of ["Insights", "Employees", "Import"]) {
       expect(screen.getByRole("menuitem", { name })).toBeInTheDocument();
     }
-    expect(screen.queryByRole("menuitem", { name: "Import" })).not.toBeInTheDocument();
+
   });
 
   it("moves between sections from the menu", async () => {

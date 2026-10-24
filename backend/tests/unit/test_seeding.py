@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from apps.employees import seeding
+from domain.stats import Reason
 
 AS_OF = date(2026, 9, 30)
 PEOPLE = seeding.generate(2000, seed=7, as_of=AS_OF)
@@ -23,13 +24,29 @@ def test_a_different_seed_gives_different_data() -> None:
 
 def test_everyone_is_paid_in_the_currency_of_their_country() -> None:
     for person in PEOPLE:
-        assert person.currency == seeding.COUNTRIES[person.country].currency
+        currency = seeding.COUNTRIES[person.country].currency
+        assert {salary.currency for salary in person.salaries} == {currency}
 
 
 def test_amounts_are_positive_round_and_under_the_currency_ceiling() -> None:
     for person in PEOPLE:
-        assert 0 < person.salary <= CEILINGS[person.currency]
-        assert person.salary % seeding.SALARY_STEPS[person.currency] == 0
+        for salary in person.salaries:
+            assert 0 < salary.amount <= CEILINGS[salary.currency]
+            assert salary.amount % seeding.SALARY_STEPS[salary.currency] == 0
+
+
+def test_every_history_starts_with_the_hire_and_moves_forward() -> None:
+    for person in PEOPLE:
+        first = person.salaries[0]
+        assert (first.reason, first.effective_date) == (Reason.HIRE, person.hire_date)
+        days = [salary.effective_date for salary in person.salaries]
+        assert days == sorted(set(days))
+
+
+def test_the_mix_includes_promotions_and_future_dated_raises() -> None:
+    reasons = {salary.reason for person in PEOPLE for salary in person.salaries}
+    assert {Reason.HIRE, Reason.MERIT, Reason.PROMOTION, Reason.MARKET} <= reasons
+    assert any(s.effective_date > AS_OF for person in PEOPLE for s in person.salaries)
 
 
 def test_everyone_was_hired_on_or_before_the_as_of_date() -> None:

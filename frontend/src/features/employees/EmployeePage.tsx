@@ -84,7 +84,7 @@ function Profile({ employee }: { employee: Employee }) {
             <Button onClick={() => setEditing(true)}>Edit details</Button>
             <Popconfirm
               title={`Delete ${employee.full_name}?`}
-              description="Their record and salary are removed for good."
+              description="Their record and salary history are removed for good."
               okText="Delete"
               okButtonProps={{ danger: true }}
               onConfirm={() =>
@@ -107,10 +107,10 @@ function Profile({ employee }: { employee: Employee }) {
         />
       </Card>
       <Row gutter={16}>
-        <Col xs={24} xl={10}>
+        <Col xs={24} xl={14}>
           <SalaryCard employee={employee} />
         </Col>
-        <Col xs={24} xl={14}>
+        <Col xs={24} xl={10}>
           <PeersCard employee={employee} />
         </Col>
       </Row>

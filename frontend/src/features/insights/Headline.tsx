@@ -3,6 +3,7 @@ import { Card, Col, Flex, Row, Statistic, Typography } from "antd";
 import type { ReactNode } from "react";
 
 import type { Summary } from "../../api/insights";
+import { formatDate } from "../../lib/format";
 import { useCurrency } from "./useCurrency";
 
 /** Headcount, payroll and the median and mean salary, and how they were converted. */
@@ -45,7 +46,8 @@ export function Headline({ summary }: { summary: Summary }) {
           <InfoCircleOutlined aria-hidden />
         </Typography.Text>
         <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-          Annual gross base salaries in {summary.currency}. {summary.fx_basis}.
+          Annual gross base salaries in force on {formatDate(summary.as_of)}, in{" "}
+          {summary.currency}. {summary.fx_basis}.
         </Typography.Paragraph>
       </Flex>
     </>

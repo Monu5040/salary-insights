@@ -55,6 +55,10 @@ DJANGO_ALLOWED_HOSTS=.trycloudflare.com,localhost
 DJANGO_SECRET_KEY=$(openssl rand -base64 48 | tr -d '\n')
 DATABASE_URL=postgres://acme:${DB_PASSWORD}@localhost:5432/acme
 SPA_DIR=${APP}/current/frontend/dist
+# The tunnel is one proxy: the client is the last address it adds to X-Forwarded-For.
+NUM_PROXIES=1
+# Questions in plain English (design §4): set a key from console.groq.com to turn them on.
+GROQ_API_KEY=
 ENV
   chown deploy:deploy "$APP/.env"
 fi

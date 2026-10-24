@@ -1,7 +1,9 @@
+from decimal import Decimal
+
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 
-from config.env import env_bool, env_int, env_list, env_str
+from config.env import env_bool, env_decimal_pair, env_int, env_list, env_str
 
 VAR = "ACME_TEST_SETTING"
 
@@ -48,3 +50,17 @@ def test_env_int_rejects_words(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_env_list_splits_on_commas_and_drops_blanks(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(VAR, "a.example.com, b.example.com,,")
     assert env_list(VAR) == ["a.example.com", "b.example.com"]
+
+
+def test_env_decimal_pair_reads_low_and_high(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(VAR, "0.75, 1.25")
+    assert env_decimal_pair(VAR, "0.80,1.20") == (Decimal("0.75"), Decimal("1.25"))
+
+
+@pytest.mark.parametrize("raw", ["0.8", "low,high", "1,2,3"])
+def test_env_decimal_pair_rejects_anything_but_two_numbers(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    monkeypatch.setenv(VAR, raw)
+    with pytest.raises(ImproperlyConfigured, match="two numbers"):
+        env_decimal_pair(VAR, "0.80,1.20")

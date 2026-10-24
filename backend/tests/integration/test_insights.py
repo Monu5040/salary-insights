@@ -10,9 +10,11 @@ In USD at the fixed rates from the reference data (INR at 0.0115 USD):
  Hana  US      Engineering Data Analyst     $90,000        90,000
  Ivan  US      Sales       Account Manager  $100,000      100,000
 
-Payroll 358,000; median (46,000 + 69,000) / 2 = 57,500; mean 59,666.67.
+Payroll 358,000; median (46,000 + 69,000) / 2 = 57,500; mean 59,666.67. Everyone was hired on
+15 Jan 2024; Ana has a raise to ₹22,00,000 agreed from 1 Oct 2026, after today (30 Sep 2026).
 """
 
+import json
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -22,11 +24,12 @@ from django.test import Client
 from pytest_django import DjangoAssertNumQueries
 from pytest_django.fixtures import Settings
 
+from apps.analytics import questions
 from apps.analytics.presets import PRESETS
 from apps.analytics.serializers import ExploreQuery
 from apps.employees.models import Employee
 from apps.reference.models import Country
-from tests.factories import department, employee
+from tests.factories import department, employee, record
 
 pytestmark = pytest.mark.django_db
 
@@ -38,9 +41,9 @@ FX_BASIS = "Converted through USD at fixed budget exchange rates"
 def company(today: date) -> dict[str, Employee]:
     us = Country.objects.get(code="US")
     sales = department("Sales")
-    analyst = {"job_title": "Data Analyst"}
-    manager = {"job_title": "Account Manager", "department": sales}
-    dollars = {"currency_id": "USD"}
+    analyst: dict[str, Any] = {"job_title": "Data Analyst"}
+    manager: dict[str, Any] = {"job_title": "Account Manager", "department": sales}
+    dollars: dict[str, Any] = {"currency_id": "USD"}
     people = [
         employee(full_name="Ana", salary=Decimal("2000000"), **analyst),
         employee(full_name="Bea", salary=Decimal("4000000"), **analyst),
@@ -49,6 +52,7 @@ def company(today: date) -> dict[str, Employee]:
         employee(full_name="Hana", salary=Decimal("90000"), country=us, **dollars, **analyst),
         employee(full_name="Ivan", salary=Decimal("100000"), country=us, **dollars, **manager),
     ]
+    record(people[0], effective_date=date(2026, 10, 1), amount=Decimal("2200000"), reason="merit")
     return {who.full_name: who for who in people}
 
 
@@ -63,6 +67,7 @@ class TestSummary:
         self, client: Client, company: dict[str, Employee]
     ) -> None:
         assert get(client, "summary/") == {
+            "as_of": "2026-09-30",
             "currency": "USD",
             "fx_basis": FX_BASIS,
             "headcount": 6,
@@ -70,6 +75,15 @@ class TestSummary:
             "median": "57500.00",
             "mean": "59666.67",
         }
+
+    def test_on_another_day_with_the_salaries_in_force_then(
+        self, client: Client, company: dict[str, Employee]
+    ) -> None:
+        later = get(client, "summary/", as_of="2026-10-01")
+        before_anyone = get(client, "summary/", as_of="2024-01-14")
+
+        assert later["payroll"] == "360300.00"  # Ana's raise: + ₹2,00,000 = $2,300
+        assert (before_anyone["headcount"], before_anyone["median"]) == (0, None)
 
     def test_in_another_currency(self, client: Client, company: dict[str, Employee]) -> None:
         body = get(client, "summary/", currency="INR")
@@ -170,7 +184,7 @@ class TestExplore:
             {"metric": "median", "by": ["country", "country"]},
             {"metric": "median", "by": ["country", "department", "title"]},
             {"by": "country"},
-            {"metric": "median", "as_of": "2026-01-01"},
+            {"metric": "median", "as_of": "next week"},
         ],
     )
     def test_only_listed_metrics_and_dimensions_reach_the_sql(
@@ -247,3 +261,108 @@ class TestPeers:
     ) -> None:
         with django_assert_num_queries(3):  # the employee, the rates, the colleagues
             client.get(f"/api/v1/employees/{company['Ana'].pk}/peers/")
+
+
+class TestPayEquity:
+    def test_lists_people_far_from_others_in_the_same_role(
+        self, client: Client, company: dict[str, Employee], settings: Settings
+    ) -> None:
+        settings.MIN_GROUP_SIZE = 2
+        body = get(client, "pay-equity/")
+
+        # Too few share a country, so everyone is compared with their whole job title.
+        # Analysts: Hana $90,000 against Ana and Bea's median, $34,500: 2.61; Ana $23,000
+        # against $68,000: 0.34; Bea is 0.81. Managers: Ivan $100,000 against $49,500: 2.02;
+        # Gus $30,000 against $84,500: 0.36; Carl is 1.06. Furthest from 1 first.
+        names = [(row["full_name"], row["compa_ratio"]) for row in body["results"]]
+        assert names == [("Hana", "2.61"), ("Ivan", "2.02"), ("Ana", "0.34"), ("Gus", "0.36")]
+        assert (body["band"], body["count"]) == (["0.80", "1.20"], 4)
+
+    def test_needs_enough_peers_to_call_anyone_an_outlier(
+        self, client: Client, company: dict[str, Employee]
+    ) -> None:
+        assert get(client, "pay-equity/")["count"] == 0  # groups of 2 and 3 are under 5
+
+
+class TestQuestions:
+    def ask(self, client: Client, question: str = "Payroll by country?") -> Any:
+        return client.post(URL + "ask/", {"question": question}, content_type="application/json")
+
+    def test_turns_a_question_into_an_explorer_answer(
+        self,
+        client: Client,
+        company: dict[str, Employee],
+        settings: Settings,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        settings.GROQ_API_KEY = "test-key"
+        sent: list[str] = []
+
+        def reply(system: str, question: str) -> str:
+            sent.append(system + question)
+            reading = {
+                "metric": ["payroll"],
+                "by": ["country"],
+                "country": [],
+                "department": [],
+                "currency": None,
+                "as_of": None,
+                "summary": "Payroll by country, in USD.",
+                "understood": True,
+            }
+            return json.dumps(reading)
+
+        monkeypatch.setattr(questions, "_chat", reply)
+
+        body = self.ask(client).json()
+
+        assert body["summary"] == "Payroll by country, in USD."
+        assert body["query"] == {
+            "metric": ["payroll"],
+            "by": ["country"],
+            "country": [],
+            "department": [],
+        }
+        rows = [(g["labels"]["country"], g["values"]["payroll"]) for g in body["answer"]["groups"]]
+        assert rows == [("India", "168000.00"), ("United States", "190000.00")]
+        assert "IN=India" in sent[0] and "1800000" not in sent[0]  # no salaries leave
+
+    @pytest.mark.parametrize(
+        "reading",
+        [
+            {"metric": ["salary_sum"]},
+            {"metric": ["median"], "by": ["gender"]},
+            {"metric": ["median"], "by": ["country", "country"]},
+            {"understood": False},
+        ],
+    )
+    def test_anything_outside_the_allow_lists_is_refused(
+        self,
+        client: Client,
+        settings: Settings,
+        monkeypatch: pytest.MonkeyPatch,
+        reading: dict[str, Any],
+    ) -> None:
+        settings.GROQ_API_KEY = "test-key"
+        monkeypatch.setattr(questions, "_chat", lambda system, question: json.dumps(reading))
+
+        assert self.ask(client).status_code == 422
+
+    def test_without_a_key_it_says_so(self, client: Client, settings: Settings) -> None:
+        settings.GROQ_API_KEY = ""
+
+        response = self.ask(client)
+
+        assert response.status_code == 503
+        assert "no Groq key" in response.json()["detail"]
+
+    def test_a_reply_that_isnt_json_is_a_503(
+        self, client: Client, settings: Settings, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        settings.GROQ_API_KEY = "test-key"
+        monkeypatch.setattr(questions, "_chat", lambda system, question: "Sure! Here you go")
+
+        assert self.ask(client).status_code == 503
+
+    def test_a_long_question_is_refused(self, client: Client) -> None:
+        assert self.ask(client, "x" * 301).status_code == 400

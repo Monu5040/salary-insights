@@ -1,14 +1,16 @@
 """Adding, editing and removing employees, salary included (design §7; edge cases #7, #8,
 #10 to #16)."""
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
 import pytest
 from django.test import Client
 
+from apps.compensation.models import SalaryRecord
 from apps.employees.models import Employee
-from tests.factories import department, employee
+from tests.factories import department, employee, record
 
 pytestmark = pytest.mark.django_db
 
@@ -50,16 +52,27 @@ def delete(client: Client, person: Employee, version: int | None = None) -> Any:
 
 
 class TestAdd:
-    def test_saves_the_employee_with_their_salary(self, client: Client) -> None:
-        response = create(client)
+    def test_saves_the_employee_and_their_starting_salary(
+        self, client: Client, today: date
+    ) -> None:
+        response = create(client, hire_date="2026-09-01")
 
         assert response.status_code == 201
         body = response.json()
         assert (body["employee_code"], body["full_name"]) == ("E00777", "José Núñez")
         assert (body["salary"], body["currency"], body["version"]) == ("1800000.00", "INR", 1)
         assert response["ETag"] == '"1"'
-        person = Employee.objects.get(pk=body["id"])
-        assert (person.salary, person.currency_id) == (Decimal("1800000"), "INR")
+        first = SalaryRecord.objects.get(employee_id=body["id"])
+        assert (first.effective_date, first.amount, first.currency_id, first.reason) == (
+            date(2026, 9, 1),
+            Decimal("1800000"),
+            "INR",
+            "hire",
+        )
+
+    def test_someone_starting_later_has_no_salary_yet(self, client: Client, today: date) -> None:
+        body = create(client, hire_date="2026-11-01").json()
+        assert (body["salary"], body["currency"]) == (None, None)
 
     def test_a_new_employee_can_be_found_straight_away(self, client: Client) -> None:
         create(client)
@@ -157,33 +170,32 @@ class TestAdd:
 
 
 class TestEdit:
-    def test_a_raise_bumps_the_version(self, client: Client) -> None:
+    def test_bumps_the_version(self, client: Client) -> None:
         person = employee()
 
-        response = patch(client, person, {"salary": "1950000"})
+        response = patch(client, person, {"job_title": "Staff Engineer"})
 
         assert response.status_code == 200
-        assert (response.json()["salary"], response.json()["version"]) == ("1950000.00", 2)
+        assert (response.json()["job_title"], response.json()["version"]) == ("Staff Engineer", 2)
         assert response["ETag"] == '"2"'
 
-    def test_a_new_currency_is_checked_against_the_salary_on_record(self, client: Client) -> None:
-        person = employee(salary=Decimal("1800000.50"))
+    def test_the_salary_isnt_edited_here(self, client: Client) -> None:
+        person = employee()
 
-        response = patch(client, person, {"currency": "JPY"})
+        patch(client, person, {"salary": "1", "currency": "JPY"})
 
-        assert response.status_code == 400
-        assert "at most 0 decimal places" in response.json()["errors"]["salary"][0]
+        assert SalaryRecord.objects.get(employee=person).amount == Decimal("1800000")
 
     def test_a_stale_version_is_refused_and_nothing_changes(self, client: Client) -> None:
         person = employee()
         patch(client, person, {"job_title": "Staff Engineer"})
 
-        response = patch(client, person, {"salary": "1"}, version=1)
+        response = patch(client, person, {"job_title": "Intern"}, version=1)
 
         assert response.status_code == 412
         assert response.json()["current_version"] == 2
         person.refresh_from_db()
-        assert person.salary == Decimal("1800000")
+        assert person.job_title == "Staff Engineer"
 
     def test_a_write_without_if_match_is_refused(self, client: Client) -> None:
         person = employee()
@@ -195,7 +207,7 @@ class TestEdit:
     def test_saving_without_changes_keeps_the_version(self, client: Client) -> None:
         person = employee()
 
-        response = patch(client, person, {"job_title": person.job_title, "salary": "1800000"})
+        response = patch(client, person, {"job_title": person.job_title})
 
         assert response.json()["version"] == 1
 
@@ -221,12 +233,31 @@ class TestEdit:
         assert response.status_code == 404
 
 
+class TestHireDate:
+    def test_the_starting_salary_moves_with_it(self, client: Client) -> None:
+        person = employee()
+
+        assert patch(client, person, {"hire_date": "2024-02-01"}).status_code == 200
+
+        assert SalaryRecord.objects.get(employee=person).effective_date == date(2024, 2, 1)
+
+    def test_it_cant_pass_the_next_salary_change(self, client: Client) -> None:
+        person = employee()
+        record(person, effective_date=date(2025, 4, 1), amount=Decimal("1900000"), reason="merit")
+
+        response = patch(client, person, {"hire_date": "2025-04-01"})
+
+        assert response.status_code == 400
+        assert "before the salary change on 2025-04-01" in response.json()["errors"]["hire_date"][0]
+
+
 class TestDelete:
-    def test_removes_the_employee(self, client: Client) -> None:
+    def test_removes_the_employee_and_their_salary_history(self, client: Client) -> None:
         person = employee()
 
         assert delete(client, person).status_code == 204
         assert not Employee.objects.exists()
+        assert not SalaryRecord.objects.exists()
 
     def test_a_stale_version_is_refused(self, client: Client) -> None:
         person = employee()

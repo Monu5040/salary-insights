@@ -5,7 +5,8 @@ from django.db.models.functions import Lower
 
 
 class Employee(models.Model):
-    """A full-time employee and their current annual base salary (design D4)."""
+    """A full-time employee. Their salary lives in compensation.SalaryRecord, derived as of a
+    date (design D4)."""
 
     employee_code = models.CharField(max_length=32, unique=True, help_text="HR's own key")
     full_name = models.CharField(max_length=200)
@@ -19,8 +20,19 @@ class Employee(models.Model):
     )
     job_title = models.CharField(max_length=120)
     hire_date = models.DateField()
-    salary = models.DecimalField(max_digits=19, decimal_places=4, help_text="Annual gross base")
-    currency = models.ForeignKey("reference.Currency", on_delete=models.PROTECT, related_name="+")
+    # Expand now, contract later (CLAUDE.md): the salary moved to salary_records, which the
+    # migration filled from these columns. Nothing reads or writes them; the next release
+    # drops them.
+    salary = models.DecimalField(
+        max_digits=19,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Unused: see salary_records",
+    )
+    currency = models.ForeignKey(
+        "reference.Currency", on_delete=models.PROTECT, related_name="+", null=True, blank=True
+    )
     search_text = models.TextField(editable=False, help_text="domain.text.fold(name + code)")
     version = models.PositiveIntegerField(default=1, help_text="Optimistic locking (If-Match)")
     created_at = models.DateTimeField(auto_now_add=True)
