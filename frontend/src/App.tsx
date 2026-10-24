@@ -9,6 +9,7 @@ import { NotFound } from "./components/NotFound";
 import { EmployeePage } from "./features/employees/EmployeePage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { NewEmployeePage } from "./features/employees/NewEmployeePage";
+import { InsightsPage } from "./features/insights/InsightsPage";
 
 // Icons are decoration beside their words, so screen readers skip them.
 const SECTIONS = [
@@ -21,6 +22,7 @@ export function App() {
     <Routes>
       <Route element={<Shell />}>
         <Route index element={<Navigate to="/insights" replace />} />
+        <Route path="/insights" element={<InsightsPage />} />
         <Route path="/employees" element={<EmployeesPage />} />
         <Route path="/employees/new" element={<NewEmployeePage />} />
         <Route path="/employees/:id" element={<EmployeePage />} />
