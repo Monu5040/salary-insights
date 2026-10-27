@@ -12,7 +12,7 @@ How AI tools were used on this project, the prompts that shaped it, and where th
 ## How the design was produced
 
 1. **Questions before code.** Clarifying questions went to the interviewer, each with the assumption I would otherwise build on (`00`).
-2. **Answers fix the scope.** The interviewer's answers narrowed it a lot: no sign-in, current salary only, no import or export, no audit, levels or gender. The one-page requirements (`01`) list each of these under "Deliberately left out", with the reason.
+2. **Answers fix the scope.** The interviewer's answers narrowed it a lot: no sign-in, roles, audit log, levels, bands, FTE or gender. Effective-dated history, pay equity by role and CSV import and export were optional; they were added later as minimal versions (M9). The one-page requirements (`01`) list what stayed out under "Deliberately left out", with the reason.
 3. **Design, edge cases and plan** (`02`–`04`), then code, one milestone at a time.
 
 ## Prompts that shaped the work

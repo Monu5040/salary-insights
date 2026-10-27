@@ -4,7 +4,7 @@ Salary management for ACME's HR team: 10,000 employees across several countries,
 
 Django 5.2 + DRF · React + TypeScript + Ant Design · PostgreSQL.
 
-**Live demo: https://jeremy-moscow-minus-desert.trycloudflare.com**. No sign-in is needed: the brief asks for one HR Manager persona without authentication. The data is generated, and anyone may change it, so it is reset every night at 03:00 UTC.
+**Live demo: https://proceedings-advise-wrote-cognitive.trycloudflare.com**. No sign-in is needed: the brief asks for one HR Manager persona without authentication. The data is generated, and anyone may change it, so it is reset every night at 03:00 UTC.
 
 ## Run it locally
 
