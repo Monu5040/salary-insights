@@ -6,6 +6,8 @@ Django 5.2 + DRF · React + TypeScript + Ant Design · PostgreSQL.
 
 **Live demo: https://proceedings-advise-wrote-cognitive.trycloudflare.com**. No sign-in is needed: the brief asks for one HR Manager persona without authentication. The data is generated, and anyone may change it, so it is reset every night at 03:00 UTC.
 
+**Demo video (4 minutes): https://drive.google.com/file/d/18y1eSIgoMNmQDQae5tWd2l-2-ndIH7SY/view?usp=sharing**
+
 ## Run it locally
 
 You need Docker (for PostgreSQL), [uv](https://docs.astral.sh/uv/) and Node 22.
